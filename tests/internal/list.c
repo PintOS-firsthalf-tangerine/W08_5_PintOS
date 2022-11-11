@@ -123,6 +123,8 @@ shuffle (struct value *array, size_t cnt)
     }
 }
 
+// 스레드가 다를 수 있으므로 list_entry(page table entry)로 접근해서
+// 값을 가져와서 비교한 결과를 반환.
 /* Returns true if value A is less than value B, false
    otherwise. */
 static bool

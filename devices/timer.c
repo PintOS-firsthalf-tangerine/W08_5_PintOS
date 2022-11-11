@@ -92,25 +92,26 @@ void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks();
 
-	//start//////////////////////////////////////////////////////////////////////
+
+	// 수정 시작
 	/*
 
 	O 기존의 busy waiting을 유발하는 코드를 삭제
 
-
 	새로 구현한 thread를 sleep queue에 삽입하는 함수를 호출
-	*/
-	// 새로 구현한 thread
-	// thread란
-	/*
+
 	스레드(thread)란 프로세스(process) 내에서 실제로 작업을 수행하는 주체를 의미
 	
-	여기서는 프로세스와 스레드를 동일시 하여 구현하게 됩니다.
+
 	*/
 	// thread_init();
+	struct thread *curr = running_thread();
 
-	list_push_back()
-	//end//////////////////////////////////////////////////////////////////////
+	// init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
+	// if(curr != idle_thread)
+	if(curr != initial_thread)
+		list_push_back(&sleep_list, &curr->elem);
+	// 수정 끝
 
 	// 원래 코드
 	// ASSERT (intr_get_level () == INTR_ON);
@@ -141,13 +142,22 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
+// 수정 시작
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
-	thread_tick ();
+	// ticks++;
+	if(get_next_tick_to_awake() <= ticks)
+		thread_awake(ticks);
 }
+// 기존 코드
+// static void
+// timer_interrupt (struct intr_frame *args UNUSED) {
+// 	ticks++;
+// 	thread_tick ();
+// }
+// 수정 끝
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
