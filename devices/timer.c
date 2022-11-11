@@ -108,7 +108,8 @@ timer_sleep (int64_t ticks) {
 	struct thread *curr = running_thread();
 
 	// init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
-	if(curr != idle_thread)
+	// if(curr != idle_thread)
+	if(curr != initial_thread)
 		list_push_back(&sleep_list, &curr->elem);
 	// 수정 끝
 
@@ -141,13 +142,22 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
+// 수정 시작
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
-	thread_tick ();
+	// ticks++;
+	if(get_next_tick_to_awake() <= ticks)
+		thread_awake(ticks);
 }
+// 기존 코드
+// static void
+// timer_interrupt (struct intr_frame *args UNUSED) {
+// 	ticks++;
+// 	thread_tick ();
+// }
+// 수정 끝
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
