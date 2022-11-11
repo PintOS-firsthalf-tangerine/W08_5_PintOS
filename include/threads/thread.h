@@ -92,6 +92,11 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
+	//start//////////////////////////////////////////////////////////////////////
+	// 깨어나야할 tick을 저장할 변수 추가
+	int64_t wakeup_tick;
+	//end//////////////////////////////////////////////////////////////////////
+
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -113,6 +118,27 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+// 추가한 함수 선언 시작
+
+/*
+busy waiting > sleep/awake
+*/
+
+// 실행 중인 스레드를 슬립으로 만듬
+void thread_sleep(int64_t ticks);
+
+// 슬립큐에서 깨워야할 스레드를 깨움
+void thread_awake(int64_t ticks);
+
+// 최소 tick을 가진 스레드 저장
+void update_next_tick_to_awake(int64_t ticks);
+
+// thread.c의 next_tick_to_awake 반환
+int64_t get_next_tick_to_awake(vodi);
+
+// 추가한 함수 선언 끝
+
 
 void thread_init (void);
 void thread_start (void);

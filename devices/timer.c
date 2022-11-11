@@ -90,11 +90,32 @@ timer_elapsed (int64_t then) {
 /* Suspends execution for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
+	int64_t start = timer_ticks();
 
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	//start//////////////////////////////////////////////////////////////////////
+	/*
+
+	O 기존의 busy waiting을 유발하는 코드를 삭제
+
+
+	새로 구현한 thread를 sleep queue에 삽입하는 함수를 호출
+	*/
+	// 새로 구현한 thread
+	// thread란
+	/*
+	스레드(thread)란 프로세스(process) 내에서 실제로 작업을 수행하는 주체를 의미
+	
+	여기서는 프로세스와 스레드를 동일시 하여 구현하게 됩니다.
+	*/
+	// thread_init();
+
+	list_push_back()
+	//end//////////////////////////////////////////////////////////////////////
+
+	// 원래 코드
+	// ASSERT (intr_get_level () == INTR_ON);
+	// while (timer_elapsed (start) < ticks)
+	// 	thread_yield ();
 }
 
 /* Suspends execution for approximately MS milliseconds. */

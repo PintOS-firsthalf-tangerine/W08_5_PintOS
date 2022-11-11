@@ -28,6 +28,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+// sleep queue
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -44,6 +47,15 @@ static struct list destruction_req;
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
+
+// sleep_list에서 대기중인 스레드들의 wakeup_tick값 중 최소값을 저장
+static long long next_tick_to_awake;
+
+/*
+THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가
+
+>> 추정 : block_queue or Sleep_queue
+*/
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -96,6 +108,9 @@ void
 thread_init (void) {
 	ASSERT (intr_get_level () == INTR_OFF);
 
+	// Sleep queue 자료구조 초기화 코드 추가
+
+
 	/* Reload the temporal gdt for the kernel
 	 * This gdt does not include the user context.
 	 * The kernel will rebuild the gdt with user context, in gdt_init (). */
@@ -108,11 +123,19 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	
+	//start//////////////////////////////////////////////////////////////////////
+	// 
+	list_init (&sleep_list);
+
+	//end//////////////////////////////////////////////////////////////////////
+
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
 	init_thread (initial_thread, "main", PRI_DEFAULT);
+
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
 }
@@ -301,9 +324,15 @@ thread_yield (void) {
 
 	ASSERT (!intr_context ());
 
+	// old_level에 기존 작업에 대한 정보 저장하고 interrupt를 disable 시킴
+	// 이전 interrupt 상태를 old level에 저장. 미래의 5조가 정리.
 	old_level = intr_disable ();
+
+	//  current thread가 idle_thread가 아니면 ready list에 curr_elem넣기
 	if (curr != idle_thread)
 		list_push_back (&ready_list, &curr->elem);
+		// ready_list의 맨 뒤에 현재 elem를 넣어줌.
+		// 미래의 5조가 정리
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
