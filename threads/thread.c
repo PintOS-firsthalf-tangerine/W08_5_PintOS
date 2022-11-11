@@ -28,11 +28,7 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-// sleep queue
-static struct list sleep_list;
 
-/* Idle thread. */
-static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
@@ -49,6 +45,9 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 // sleep_list에서 대기중인 스레드들의 wakeup_tick값 중 최소값을 저장
+// 다음에 깨울 스레드 무엇인지 찾는 변수
+// 항상 모든 스레드 중에서, 여기 있는 값은, thread->wakeup_tick 이 값들 중에 하나
+// 
 static long long next_tick_to_awake = (1 << 31) + 1;
 
 /*
@@ -96,7 +95,10 @@ static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 // ticks 값은 thread_awake() 함수에서 최소값을 알아서 넣어준다.
 void update_next_tick_to_awake(int64_t ticks)
 {
-	next_tick_to_awake = ticks;
+	if(next_tick_to_awake > ticks)
+		next_tick_to_awake = ticks;
+		
+	// next_tick_to_awake = ticks;
 }
 
 int64_t get_next_tick_to_awake(void)
@@ -142,6 +144,43 @@ void thread_sleep(int64_t ticks)
 	// 비워주진 못함.
 
 	intr_set_level (old_level);
+}
+
+void thread_awake(int64_t ticks)
+{	
+	/*
+	ticks - 시간 tick
+
+	현재 대기중인 스레드들의 wakeup_tick변수 중 
+	가장 작은 값을 next_tick_to_awake 전역 변수에 저장
+
+
+	sleep list의 모든 entry를 순회하며 다음과 같은 작업을 수행한다.
+
+		1 - 현재 tick이 깨워야 할 tick보다 크거나 같다면 
+		Sleep queue에서 제거하고 unblock한다.
+
+		2 - 작다면 update_next_tick_to_awake()를 호출한다.
+	*/
+	// list_min(&sleep_list, value_less, )
+
+	// 순회하면서 다음과 같은 작업 head부터 시작
+	struct list_elem *traverse_list_elem = list_begin(&sleep_list);
+	struct thread *traverse_thread;
+	while(traverse_list_elem != list_end(&sleep_list))
+	{
+		traverse_thread = list_entry(traverse_list_elem, struct thread, elem);
+		if(traverse_thread->wakeup_tick <= ticks)
+		{
+			traverse_list_elem = list_remove(&traverse_thread->elem);
+			thread_unblock(traverse_thread);
+		}
+		else
+		{
+			traverse_list_elem = list_next(traverse_list_elem);
+			update_next_tick_to_awake(traverse_thread->wakeup_tick);
+		}
+	}
 }
 // 수정 끝
 
