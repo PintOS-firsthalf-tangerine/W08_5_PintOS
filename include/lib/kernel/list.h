@@ -33,7 +33,7 @@
 
  * struct list_elem *e;
 
- * for (e = list_begin (&foo_list); e != list_end (&foo_list);
+ * for (e = list_beg=in (&foo_list); e != list_end (&foo_list);
  * e = list_next (e)) {
  *   struct foo *f = list_entry (e, struct foo, elem);
  *   ...do something with f...

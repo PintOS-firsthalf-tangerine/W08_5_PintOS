@@ -90,8 +90,8 @@ timer_elapsed (int64_t then) {
 /* Suspends execution for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks();
 
+	int64_t start = timer_ticks();	// 시작 시간 들어옴	
 
 	// 수정 시작
 	/*
@@ -102,19 +102,28 @@ timer_sleep (int64_t ticks) {
 
 	스레드(thread)란 프로세스(process) 내에서 실제로 작업을 수행하는 주체를 의미
 	
-
 	*/
-	// thread_init();
-	struct thread *curr = running_thread();
 
-	// init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
+	if(timer_elapsed(start)<ticks)
+		thread_sleep(start+ticks);	
+
+	// interrupt를 on상태인지 확인
+	// on 상태에서 들어와야 하기 때문, timer sleep 자체가 interrupt이기 때문??????????????
+	// ASSERT (intr_get_level () == INTR_ON);	
+	
+	// thread_init();
+	// sleep으로 가려면 BLock상태이어야 하고, Block상태로 가려면 이전에 running 상태이어야 한다
+	// struct thread *curr = running_thread();	
+
+	// // init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
 	// if(curr != idle_thread)
-	if(curr != initial_thread)
-		list_push_back(&sleep_list, &curr->elem);
+		
+	// 	// list_push_back(&sleep_list, &curr->elem);
 	// 수정 끝
 
+	// if(curr != initial_thread)
 	// 원래 코드
-	// ASSERT (intr_get_level () == INTR_ON);
+	// ASSERT (intr_get_level () == INTR_ON);	
 	// while (timer_elapsed (start) < ticks)
 	// 	thread_yield ();
 }
@@ -147,7 +156,19 @@ timer_print_stats (void) {
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	// ticks++;
+
+	ticks++;
+	thread_tick ();	// update the cpu usage for running process
+	
+	// check sleeplist and the global tick
+
+
+	// find any threads to wake up
+
+	// move them to the ready list if necessary
+
+	// update the global tick
+
 	if(get_next_tick_to_awake() <= ticks)
 		thread_awake(ticks);
 }
