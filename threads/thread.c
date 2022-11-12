@@ -132,7 +132,7 @@ void thread_sleep(int64_t ticks)
 	if(curr != idle_thread)
 	{	
 		// thread의 상태를 BLOCKED로 바꾸고
-		thread_block(); 
+		// thread_block(); 
 
 		// 현재 스레드에 잠자야 할 시간(깨어나야 할 시간) 즉 ticks를 저장
 		curr->wakeup_tick = ticks;
@@ -144,10 +144,11 @@ void thread_sleep(int64_t ticks)
 		// awake함수가 실행되어야 할 tick값을 update
 		// the global tick
 		update_next_tick_to_awake(ticks);
+	do_schedule (THREAD_BLOCKED);	
 	}
 
-	// do_schedule (THREAD_READY);
-	schedule();
+
+	// schedule();
 	// destruction_req(dying status인 스레드가 있는 리스트)를 
 	// 비워주진 못함.
 
