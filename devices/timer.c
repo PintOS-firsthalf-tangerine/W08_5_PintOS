@@ -92,6 +92,9 @@ void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks();
 
+	
+	ASSERT (intr_get_level () == INTR_ON);
+	thread_sleep(start + ticks);
 
 	// 수정 시작
 	/*
@@ -105,12 +108,12 @@ timer_sleep (int64_t ticks) {
 
 	*/
 	// thread_init();
-	struct thread *curr = running_thread();
+	// struct thread *curr = running_thread();
 
 	// init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
 	// if(curr != idle_thread)
-	if(curr != initial_thread)
-		list_push_back(&sleep_list, &curr->elem);
+	// if(curr != initial_thread)
+	// 	list_push_back(&sleep_list, &curr->elem);
 	// 수정 끝
 
 	// 원래 코드
