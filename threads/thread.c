@@ -28,19 +28,23 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-// 수정 시작
 /* List of all processes. Processes are added to this list when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
 static struct thread *idle_thread;
-/*
-THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가
 
+//--------------project1-alarm-start--------------
 
->> 추정 : block_queue or Sleep_queue
-*/
+// THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가 >> Sleep_queue
 static struct list sleep_list;
-// 수정 끝
+
+/* 
+next_tick_to_awake: sleep_list에 있는 모든 스레드들의 wakeup_tick값 중 최소값
+>> list_entry를 통해 다음에 깨울 스레드 무엇인지 알 수 있음 
+*/
+int64_t next_tick_to_awake = INT64_MAX;
+
+//--------------project1-alarm-end----------------
 
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
@@ -56,13 +60,6 @@ static struct list destruction_req;
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
-
-// sleep_list에서 대기중인 스레드들의 wakeup_tick값 중 최소값을 저장하기 위한 변수 
-// next_tick_to_awake
-// 다음에 깨울 스레드 무엇인지 찾는 변수
-// 항상 모든 스레드 중에서, 여기 있는 값은, thread->wakeup_tick 이 값들 중에 하나
-// static long long next_tick_to_awake = (1 << 31) + 1;
-int64_t next_tick_to_awake = INT64_MAX;
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -90,6 +87,9 @@ static tid_t allocate_tid (void);
  * down to the start of a page.  Since `struct thread' is
  * always at the beginning of a page and the stack pointer is
  * somewhere in the middle, this locates the curent thread. */
+/* 스택 포인터는 running 스레드가 사용한 스택의 크기만큼 증가한다. 
+   running 스레드가 변경되면, 스택 포인터를 초기화시켜주어야 하므로
+   스택 포인터를 page 크기를 기준으로 '내림'처리하여 초기화한다.*/
 #define running_thread() ((struct thread *) (pg_round_down (rrsp ())))
 
 
@@ -98,61 +98,60 @@ static tid_t allocate_tid (void);
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
-// 수정 시작 //////////////////////////////////////////////////
-// 최소 tick을 가진 스레드 저장하는 함수
+//--------------project1-alarm-start--------------
+
+/*
+ * next_tick_to_awake 업데이트하는 함수
+*/
 void update_next_tick_to_awake(int64_t ticks)
 {
-
-	if(next_tick_to_awake > ticks)
-		next_tick_to_awake = ticks;	// next tick to awake 업데이트
-		
+	if(next_tick_to_awake > ticks)	 
+		next_tick_to_awake = ticks;			
 }
 
+/*
+ * next_tick_to_awake를 반환
+*/
 int64_t get_next_tick_to_awake(void)
 {
 	return next_tick_to_awake;
 }
 
+/*
+ * 
+*/
 void thread_sleep(int64_t ticks)
 {
 	// Thread를 blocked 상태로 만들고 sleep queue에 삽입하여 대기
 
-	// 현재 스레드 선언 및 초기화
+	// 현재(running) 스레드 선언 및 초기화
 	struct thread *curr = running_thread();
 
-	// 깨어나야 할 ticks를 저장할 변수
+	// 깨어나야 할 ticks(잠자는 시간)를 저장할 변수
 	int64_t awake_ticks;
-	enum intr_level old_level;
 
-	// old_level에 기존 작업에 대한 정보 저장하고 interrupt를 disable 시킴
-	// 이전 interrupt 상태를 old level에 저장.
-	old_level = intr_disable ();
+	// old_level에 이전 interrupt에 대한 정보 저장하고 interrupt를 disable 시킴
+	enum intr_level old_level = intr_disable ();
 
 	// 현재 스레드가 idle 스레드가 아닐 경우
 	if(curr != idle_thread)
 	{	
-		// thread의 상태를 BLOCKED로 바꾸고
-		// thread_block(); 
-
 		// 현재 스레드에 잠자야 할 시간(깨어나야 할 시간) 즉 ticks를 저장
 		curr->wakeup_tick = ticks;
 
-		// Sleep queue에 삽입하고
+		// Sleep list에 현재 스레드 삽입하고
 		list_push_back(&sleep_list, &curr->elem);
-		
-
-		// awake함수가 실행되어야 할 tick값을 update
-		// the global tick
+	
+		// idle스레드만 있을 떄, next_tick_to_awake 업데이트 해줌
 		update_next_tick_to_awake(ticks);
+
+		// destruction_req(list 자료형)를 모두 비워주고 
+		// 현재 스레드의 상태를 BLOCKED로 바꾸고, 
+		// 스케쥴 실행 - next 스레드 상태를 RUNNING으로 변경, curr 스레드를 destruction_req에 넣음 
 		do_schedule (THREAD_BLOCKED);	
 	}
 
-
-	// schedule();
-	// destruction_req(dying status인 스레드가 있는 리스트)를 
-	// 비워주진 못함.
-
-	intr_set_level (old_level);
+	intr_set_level (old_level);	// interrupt를 다시 허용
 }
 
 void thread_awake(int64_t ticks)
@@ -199,7 +198,7 @@ void thread_awake(int64_t ticks)
 		}
 	}
 }
-// 수정 끝 ///////////////////////////////////////////////
+//--------------project1-alarm-end----------------
 
 
 /* Initializes the threading system by transforming the code
@@ -549,9 +548,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-	////////////////////////
+	//--------------project1-alarm-start--------------
 	t->wakeup_tick = 0;
-	////////////////////////
+	//--------------project1-alarm-end--------------
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -559,12 +558,15 @@ init_thread (struct thread *t, const char *name, int priority) {
    empty.  (If the running thread can continue running, then it
    will be in the run queue.)  If the run queue is empty, return
    idle_thread. */
+/*
+	다음 스레드를 반환
+*/
 static struct thread *
 next_thread_to_run (void) {
-	if (list_empty (&ready_list))
+	if (list_empty (&ready_list))// ready_list가 빈 리스트이면 idle 스레드를 반환 -> idle 스레드만 있는 경우 (맨 처음)
 		return idle_thread;
-	else
-		return list_entry (list_pop_front (&ready_list), struct thread, elem);
+	else   //list_entry(ready_list 중 맨 앞 list elem(스레드), struct thread, list_elem 전역변수 elem)
+		return list_entry(list_pop_front (&ready_list), struct thread, elem);
 }
 
 /* Use iretq to launch the thread */
@@ -668,106 +670,71 @@ thread_launch (struct thread *th) {
 /*
 
 */
+/*
+destruction_req(list 자료형)를 모두 비워주고 
+현재 스레드의 상태를 BLOCKED로 바꾸고, 스케쥴 실행
+*/
+/* If the thread we switched from is dying, destroy its struct
+	thread. This must happen later so that thread_exit() doesn't
+	pull out the rug under itself.
+	We just queuing the page free reqeust here because the page is
+	currently used by the stack.
+	The real destruction logic will be called at the beginning of the
+	schedule(). 
+
+	스레드가 running인 상태일 떄는, stack에서 Page를 사용하고 있기 때문에
+	page free request를 큐에 넣고 기다린다. 
+	이후, schedule()이 실행되면 먼저 destruction logic을 실행시켜 page free request를 처리한다.
+*/
+static void
+do_schedule(int status) {
+	ASSERT (intr_get_level () == INTR_OFF);	// interrupt가 off상태이어야 함
+	ASSERT (thread_current()->status == THREAD_RUNNING);// thread RUNNING상태이어야 함
+	while (!list_empty (&destruction_req)) {// destruction logic 실행
+		struct thread *victim =	// destruction_req의 모든 원소들(victim)을 page free 시킴
+			list_entry (list_pop_front (&destruction_req), struct thread, elem);
+		palloc_free_page(victim);// 할당받은 페이지 공간을 반환함
+	}
+	thread_current ()->status = status;	// 현재 스레드의 상태를 인자로 받은 상태로 변경
+	schedule ();						// 스케쥴 함수 실행
+}
+
 /* Schedules a new process. At entry, interrupts must be off.
  * This function modify current thread's status to status and then
  * finds another thread to run and switches to it.
  * It's not safe to call printf() in the schedule(). */
-static void
-do_schedule(int status) {
-	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (thread_current()->status == THREAD_RUNNING);
-	while (!list_empty (&destruction_req)) {
-		struct thread *victim =
-			list_entry (list_pop_front (&destruction_req), struct thread, elem);
-		palloc_free_page(victim);
-	}
-	thread_current ()->status = status;
-	schedule ();
-}
-
-// next_thread의 status를 THREAD_RUNNING으로 변경한다.
-// curr_thread를 destruction_req에 넣어줌.
+/*
+	next 스레드의 status를 THREAD_RUNNING으로 변경하고, 
+	curr 스레드를 destruction_req에 넣어줌.
+*/
 static void
 schedule (void) {
-	// #define running_thread() ((struct thread *) (pg_round_down (rrsp ())))
-	/*
-	Round down to nearest page boundary == 가까운 page boundary로 내림.
+	// *curr에 running 스레드 저장 
+	struct thread *curr = running_thread();
 
-	rsp - 포인터 레지스터
+	// next에 다음에 실행될 스레드 저장
+	struct thread *next = next_thread_to_run();
 
-	__attribute__((always_inline))
-	static __inline uint64_t rrsp(void)
-	{
-		uint64_t val;
-		__asm __volatile("movq %%rsp,%0" : "=r" (val));
-		return val;
-		quad(4)word(2byte) 8byte
-		stack pointer rsp를 0으로 옮겨라
-	}
-
-	stack 0번째에는 항상 running_thread만 올라온다.
-	*/
-	struct thread *curr = running_thread ();
-
-	/*
-	next_thread_to_run (void) 
-	{
-		if (list_empty (&ready_list))
-			return idle_thread;
-		else
-			return list_entry (list_pop_front (&ready_list), struct thread, elem);
-	}
-
-	struct list_elem elem;              // List element.
-
-	#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *) 0)->MEMBER)
-
-	offsetof(TYPE, MEMBER) ((size_t) &((struct thread *) 0)->elem)
-
-	/* Converts pointer to list element LIST_ELEM into a pointer to
-   the structure that LIST_ELEM is embedded inside.  Supply the
-   name of the outer structure STRUCT and the member name MEMBER
-   of the list element.  See the big comment at the top of the
-   file for an example. */
-   /*
-	#define list_entry(LIST_ELEM, STRUCT, MEMBER)	\
-		((STRUCT * ) ((uint8_t *) &(LIST_ELEM)->next    \
-			- offsetof (STRUCT, MEMBER.next)))
-	
-	list_entry(ready_list 중 맨 앞 list elem(스레드), struct thread, list_elem 전역변수 elem)
-
-	offsetof = struct 내부의 member의 상대 주소
-
-	list_entry - ready list의 맨 앞(pop을 한) 주소값을 반환
-
-	*/
-	struct thread *next = next_thread_to_run ();
-
-	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (curr->status != THREAD_RUNNING);
-	ASSERT (is_thread (next));
+	ASSERT (intr_get_level () == INTR_OFF);	// Interrupt가 off이어야 함
+	ASSERT (curr->status != THREAD_RUNNING);// 현재 스레드가 RUNNING상태가 아니어야 함
+	ASSERT (is_thread (next));				// next가 스레드이어야 함
 	/* Mark us as running. */
-	next->status = THREAD_RUNNING;
+	next->status = THREAD_RUNNING;	// next를 RUNNING상태로 변경
 
 	/* Start new time slice. */
-	thread_ticks = 0;
+	thread_ticks = 0;	// next스레드의 스레드 ticks값 초기화
 
 #ifdef USERPROG
 	/* Activate the new address space. */
-	process_activate (next);		// 나중의 우리, 제대로 알아보기
+	//*******************************LATER**************************************************
+	process_activate (next);	// 추측: 프로세스 바뀌었으므로 메모리 공간 새로 할당 - 나중에 제대로 알아보기
+	//*******************************LATER**************************************************
 #endif
-	// 스레드가 2개 이상이라면(curr == next라는 말은 스레드가 1개밖에 없다는 말이므로)
+	// 스레드가 2개 이상인 경우 if문 실행 
+	// curr == next라는 말은 스레드가 1개밖에 없다는 말이므로
 	if (curr != next) {
-		/* If the thread we switched from is dying, destroy its struct
-		   thread. This must happen late so that thread_exit() doesn't
-		   pull out the rug under itself.
-		   We just queuing the page free reqeust here because the page is
-		   currently used bye the stack.
-		   The real destruction logic will be called at the beginning of the
-		   schedule(). */
-
 		/*
-		curr가 이미 종료된 상태이고, initial_thread가 아닐 때
+		cur이 이미 종료된 상태이고, initial_thread가 아닐 때
 		destruction_request list에 curr을 넣어준다.
 		*/ 
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread) {
@@ -777,7 +744,7 @@ schedule (void) {
 
 		/* Before switching the thread, we first save the information
 		 * of current running. */
-		 // next 스레드를 실행하면서 cur 스레드의 execution context를 저장해준다.
+		 // running 스레드를 curr에서 next로 변경하기 전에, curr의 execution context를 저장해준다.
 		thread_launch (next);
 	}
 }
