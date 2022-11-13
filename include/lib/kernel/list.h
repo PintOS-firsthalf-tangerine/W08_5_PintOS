@@ -100,9 +100,19 @@ struct list {
    name of the outer structure STRUCT and the member name MEMBER
    of the list element.  See the big comment at the top of the
    file for an example. */
-#define list_entry(LIST_ELEM, STRUCT, MEMBER)           \
-	((STRUCT *) ((uint8_t *) &(LIST_ELEM)->next     \
-		- offsetof (STRUCT, MEMBER.next)))
+/*
+   list_entry: LIST_ELEM에 해당되는 스레드의 주소를 반환
+   동작: (인자로 받은 LIST_ELEM의 next의 상대 주소) - (구조체 thread의 elem(MEMBER)멤버의 next의 상대 주소)
+
+   예시: list_entry(ready_list 중 맨 앞 list elem(스레드), struct thread, list_elem 전역변수 elem)
+	>> ready list의 맨 앞 스레드의 주소값을 반환
+   
+   offsetof: 구조체 주소를 0으로 가정했을 때, 구조체 멤버의 상대 주소
+*/ 
+#define list_entry(LIST_ELEM, STRUCT, MEMBER)           \ 
+	((STRUCT *) ((uint8_t *) &(LIST_ELEM)->next     \  
+		- offsetof (STRUCT, MEMBER.next)))    
+// 
 
 void list_init (struct list *);
 
