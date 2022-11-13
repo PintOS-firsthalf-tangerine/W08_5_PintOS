@@ -121,7 +121,7 @@ struct thread {
 extern bool thread_mlfqs;
 
 
-// 수정 시작
+// 수정 시작 ////////////////////////////////////////////////
 
 // 전역 변수 이동
 // sleep queue
@@ -145,7 +145,7 @@ void update_next_tick_to_awake(int64_t ticks);
 // thread.c의 next_tick_to_awake 반환
 int64_t get_next_tick_to_awake(void);
 
-// 수정 끝
+// 수정 끝 ////////////////////////////////////////////////
 
 void thread_init (void);
 void thread_start (void);

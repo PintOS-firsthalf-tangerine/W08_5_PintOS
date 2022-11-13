@@ -28,10 +28,23 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+// 수정 시작
+/* List of all processes. Processes are added to this list when they are first scheduled and removed when they exit. */
+static struct list all_list;
 
+static struct thread *idle_thread;
+/*
+THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가
+
+
+>> 추정 : block_queue or Sleep_queue
+*/
+static struct list sleep_list;
+// 수정 끝
 
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
+
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -44,17 +57,12 @@ static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
-// sleep_list에서 대기중인 스레드들의 wakeup_tick값 중 최소값을 저장
+// sleep_list에서 대기중인 스레드들의 wakeup_tick값 중 최소값을 저장하기 위한 변수 
+// next_tick_to_awake
 // 다음에 깨울 스레드 무엇인지 찾는 변수
 // 항상 모든 스레드 중에서, 여기 있는 값은, thread->wakeup_tick 이 값들 중에 하나
-// 
-static long long next_tick_to_awake = (1 << 31) + 1;
-
-/*
-THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가
-
->> 추정 : block_queue or Sleep_queue
-*/
+// static long long next_tick_to_awake = (1 << 31) + 1;
+int64_t next_tick_to_awake = INT64_MAX;
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -90,15 +98,14 @@ static tid_t allocate_tid (void);
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
-// 수정 시작
+// 수정 시작 //////////////////////////////////////////////////
 // 최소 tick을 가진 스레드 저장하는 함수
-// ticks 값은 thread_awake() 함수에서 최소값을 알아서 넣어준다.
 void update_next_tick_to_awake(int64_t ticks)
 {
+
 	if(next_tick_to_awake > ticks)
-		next_tick_to_awake = ticks;
+		next_tick_to_awake = ticks;	// next tick to awake 업데이트
 		
-	// next_tick_to_awake = ticks;
 }
 
 int64_t get_next_tick_to_awake(void)
@@ -114,8 +121,7 @@ void thread_sleep(int64_t ticks)
 	struct thread *curr = running_thread();
 
 	// 깨어나야 할 ticks를 저장할 변수
-	int64_t next_ticks;
-
+	int64_t awake_ticks;
 	enum intr_level old_level;
 
 	// old_level에 기존 작업에 대한 정보 저장하고 interrupt를 disable 시킴
@@ -128,14 +134,16 @@ void thread_sleep(int64_t ticks)
 		// thread의 상태를 BLOCKED로 바꾸고
 		thread_block(); 
 
-		// 깨어나야 할 ticks을 저장
-		next_ticks = next_tick_to_awake;
+		// 현재 스레드에 잠자야 할 시간(깨어나야 할 시간) 즉 ticks를 저장
+		curr->wakeup_tick = ticks;
 
 		// Sleep queue에 삽입하고
 		list_push_back(&sleep_list, &curr->elem);
+		
 
 		// awake함수가 실행되어야 할 tick값을 update
-		thread_awake(next_ticks);
+		// the global tick
+		update_next_tick_to_awake(ticks);
 	}
 
 	// do_schedule (THREAD_READY);
@@ -182,7 +190,7 @@ void thread_awake(int64_t ticks)
 		}
 	}
 }
-// 수정 끝
+// 수정 끝 ///////////////////////////////////////////////
 
 
 /* Initializes the threading system by transforming the code
@@ -202,7 +210,6 @@ void
 thread_init (void) {
 	ASSERT (intr_get_level () == INTR_OFF);
 
-	// Sleep queue 자료구조 초기화 코드 추가
 
 
 	/* Reload the temporal gdt for the kernel
@@ -220,6 +227,7 @@ thread_init (void) {
 	
 	// 수정 시작
 	
+	// Sleep queue 자료구조 초기화 코드 추가
 	list_init (&sleep_list);
 	
 	// 수정 끝
@@ -705,21 +713,24 @@ schedule (void) {
 
 	#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *) 0)->MEMBER)
 
+	offsetof(TYPE, MEMBER) ((size_t) &((struct thread *) 0)->elem)
+
+	/* Converts pointer to list element LIST_ELEM into a pointer to
+   the structure that LIST_ELEM is embedded inside.  Supply the
+   name of the outer structure STRUCT and the member name MEMBER
+   of the list element.  See the big comment at the top of the
+   file for an example. */
+   /*
 	#define list_entry(LIST_ELEM, STRUCT, MEMBER)	\
 		((STRUCT * ) ((uint8_t *) &(LIST_ELEM)->next    \
 			- offsetof (STRUCT, MEMBER.next)))
 	
-	list_entry(ready_list 중 맨 앞 스레드, struct thread, list_elem 전역변수 elem)
+	list_entry(ready_list 중 맨 앞 list elem(스레드), struct thread, list_elem 전역변수 elem)
 
-	offsetof = STRUCT로 physical address offset을 반환해줌.
+	offsetof = struct 내부의 member의 상대 주소
 
-	
-	list_entry - 다음 스레드로 전환할 때,
-	다음 스레드의 물리 주소(logical address)의 offset.
+	list_entry - ready list의 맨 앞(pop을 한) 주소값을 반환
 
-	새로운 스레드에 맞는 page table entry를 업데이트시켜주는 작업
-
-	list_entry == page table entry
 	*/
 	struct thread *next = next_thread_to_run ();
 
