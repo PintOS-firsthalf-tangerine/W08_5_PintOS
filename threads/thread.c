@@ -189,7 +189,6 @@ void thread_awake(int64_t ticks)
 
 }
 //--------------project1-alarm-end-----------------
-// gogo
 
 
 /* Initializes the threading system by transforming the code
