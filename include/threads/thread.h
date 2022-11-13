@@ -123,6 +123,13 @@ extern bool thread_mlfqs;
 
 // 수정 시작 ////////////////////////////////////////////////
 
+// 전역 변수 이동
+// sleep queue
+static struct list sleep_list;
+
+/* Idle thread. */
+static struct thread *idle_thread;
+
 
 // 추가한 함수 선언 끝
 
