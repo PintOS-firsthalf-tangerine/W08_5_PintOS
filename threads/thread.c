@@ -179,6 +179,7 @@ void thread_awake(int64_t ticks)
 	
 	// 매 순회하기 전마다 최솟값을 INT64_MAX로 갱신
 	next_tick_to_awake = INT64_MAX;
+	
 
 	while(traverse_list_elem != list_end(&sleep_list))
 	{
