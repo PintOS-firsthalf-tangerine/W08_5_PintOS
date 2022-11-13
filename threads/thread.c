@@ -173,6 +173,9 @@ void thread_awake(int64_t ticks)
 	*/
 	// list_min(&sleep_list, value_less, )
 
+	// 매 순회하기 전마다 최솟값을 INT64_MAX로 갱신
+	next_tick_to_awake = INT64_MAX;
+
 	// 순회하면서 다음과 같은 작업 head부터 시작
 	struct list_elem *traverse_list_elem = list_begin(&sleep_list);
 	struct thread *traverse_thread;
