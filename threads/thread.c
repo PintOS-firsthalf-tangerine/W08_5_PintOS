@@ -188,7 +188,7 @@ void thread_awake(int64_t ticks)
 	}
 
 }
-//--------------project1-alarm-end----------------
+//--------------project1-alarm-end-----------------
 
 
 /* Initializes the threading system by transforming the code
