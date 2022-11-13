@@ -92,11 +92,11 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-	//start//////////////////////////////////////////////////////////////////////
+	//--------------project1-alarm-start--------------
 	// 깨어나야할 tick을 저장할 변수 추가
 	int64_t wakeup_tick;
 	
-	//end//////////////////////////////////////////////////////////////////////
+	//--------------project1-alarm-end----------------
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -121,7 +121,7 @@ struct thread {
 extern bool thread_mlfqs;
 
 
-// 수정 시작 ////////////////////////////////////////////////
+//--------------project1-alarm-start--------------
 
 // 전역 변수 이동
 // sleep queue
@@ -129,9 +129,6 @@ static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
-
-
-// 추가한 함수 선언 끝
 
 // 실행 중인 스레드를 슬립으로 만듬
 void thread_sleep(int64_t ticks);
@@ -145,7 +142,17 @@ void update_next_tick_to_awake(int64_t ticks);
 // thread.c의 next_tick_to_awake 반환
 int64_t get_next_tick_to_awake(void);
 
-// 수정 끝 ////////////////////////////////////////////////
+//--------------project1-alarm-end----------------
+
+//--------------project1-priority_scheduling-start---------------
+
+// 현재 수행 중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케쥴링
+void test_max_priority(void);
+
+// 인자로 주어진 스레드들의 우선순위를 비교
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+//--------------project1-priority_scheduling-end-----------------
 
 void thread_init (void);
 void thread_start (void);

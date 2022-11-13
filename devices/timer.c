@@ -141,12 +141,14 @@ timer_print_stats (void) {
 
 //--------------project1-alarm-start--------------
 /* Timer interrupt handler. */
+// CPU에 내장된 타이머가 자동으로 timer interrupt를 매 tick마다 실행함
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 
-	ticks++;
-	// 스레드마다 사용한 시간을 업데이트 하는 것으로 추정함 ????????????????????????????/
-	thread_tick ();	// update the cpu usage for running process
+	ticks++;	// ticks 값 1씩 증가
+
+	// idle ticks, kernel ticks, user ticks 측정 결과를 출력함
+	thread_tick ();	// update the cpu usage for running process - statistics
 
 	// '현재 시각'이 '깨워야할 스레드 시각'과 같거나 더 흘렀다면 
 	if(get_next_tick_to_awake() <= ticks)

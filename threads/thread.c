@@ -219,7 +219,7 @@ thread_init (void) {
 	};
 	lgdt (&gdt_ds);
 
-	/* Init the globla thread context */
+	/* Init the global thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	
@@ -229,7 +229,7 @@ thread_init (void) {
 	// Sleep queue 자료구조 초기화 코드 추가
 	list_init (&sleep_list);
 
-	//--------------project1-alarm-end----------------
+	//--------------project1-alarm-end-----------------
 
 	list_init (&destruction_req);
 
@@ -259,7 +259,9 @@ thread_start (void) {
 
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
-// 타이머 인터럽트 핸들러에 의해 매 timer tick마다 호출되는 함수
+/* 타이머 인터럽트 핸들러에 의해 매 timer tick마다 호출되는 함수 
+   idle, kernel, user ticks를 셈
+*/
 void
 thread_tick (void) {
 	struct thread *t = thread_current ();
@@ -332,6 +334,18 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	//--------------project1-priority_scheduling-start---------------
+
+	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위보다 높다면, CPU를 양보한다. 
+	struct thread *t_curr = thread_current ();
+
+	if (t->priority > t_curr->priority) {
+		// thread_yield()함수 수정 필요 -> 새로 생성된 스레드가 readylist의 맨 앞에 들어가야 할 듯
+		thread_yield();	
+	}
+
+	//--------------project1-priority_scheduling-end-----------------
+
 	return tid;
 }
 
@@ -362,6 +376,12 @@ thread_block (void) {
 */
 void
 thread_unblock (struct thread *t) {
+	//--------------project1-priority_scheduling-start---------------
+
+	// 스레드가 unblock될 때, 우선순위 순으로 정렬되어 ready_list에 삽입되도록 수정
+
+	//--------------project1-priority_scheduling-end-----------------
+
 	enum intr_level old_level;
 
 	ASSERT (is_thread (t));
@@ -424,6 +444,14 @@ thread_exit (void) {
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void) {
+
+	//--------------project1-priority_scheduling-start---------------
+
+	// 현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 
+	// 우선순위 순서로 정렬되어 삽입되도록 수정
+
+	//--------------project1-priority_scheduling-end00---------------
+
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
 
@@ -446,6 +474,27 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+
+	//--------------project1-priority_scheduling-start---------------
+
+	// 스레드의 우선순위가 변경되었을 때, 우선순위에 따라 선점이 발생하도록 한다. 
+
+	//--------------project1-priority_scheduling-end-----------------
+}
+
+/*
+*/
+void test_max_priority(void)
+{
+	// ready_list에서 우선순위가 가장 높은 스레드와 현재 스레드의 우선순위를 비교하여 스케줄링 한다. 
+	// ready_list가 비어있지 않은지 확인
+}
+
+/*
+*/
+bool cmp_priority(const struct list_elem* a_, const struct list_elem* b_, void* aux UNUSED)
+{
+	// list_insert_ordered() 함수에서 사용하기 위해, 정렬 방법을 결정하기 위한 함수를 작성
 }
 
 /* Returns the current thread's priority. */
@@ -545,7 +594,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 	//--------------project1-alarm-start--------------
 	t->wakeup_tick = 0;
-	//--------------project1-alarm-end--------------
+	//--------------project1-alarm-end----------------
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
