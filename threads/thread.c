@@ -118,7 +118,9 @@ int64_t get_next_tick_to_awake(void)
 }
 
 /*
- * 
+	현재 Running 스레드를 Blocked 상태로 만들고 sleep queue에 삽입한 뒤, 
+	다음 스레드를 Running 상태로 만듦.
+	만약 현재 Running 스레드가 이미 종료되었다면, destruction_req에 삽입함
 */
 void thread_sleep(int64_t ticks)
 {
@@ -154,44 +156,37 @@ void thread_sleep(int64_t ticks)
 	intr_set_level (old_level);	// interrupt를 다시 허용
 }
 
+//*******************************LATER***************************************
+// 추정: thread.c 함수에 매개변수로 들어오는 ticks는 '시각'이고, 
+// 		timer.c에서의 ticks는 '시간'일 것으로 추정된다...............???????????????
+//*******************************LATER***************************************
+/*
+  sleep list의 모든 스레드들을 순회하면서
+  만약 깨워야 할 스레드들이 있다면, 해당 스레드를 sleep list에서 제거하고 ready list에 넣는다. 
+	next_tick_to_awake 값을 깨우지 않는 나머지 스레드의 wake_up_tick 중 최솟값으로 갱신한다. 
+*/
 void thread_awake(int64_t ticks)
 {	
-	/*
-	ticks - 시간 tick
-
-	현재 대기중인 스레드들의 wakeup_tick변수 중 
-	가장 작은 값을 next_tick_to_awake 전역 변수에 저장
-
-
-	sleep list의 모든 entry를 순회하며 다음과 같은 작업을 수행한다.
-
-		1 - 현재 tick이 깨워야 할 tick보다 크거나 같다면 
-		Sleep queue에서 제거하고 unblock한다.
-
-		2 - 작다면 update_next_tick_to_awake()를 호출한다.
-	*/
-	// list_min(&sleep_list, value_less, )
-
-	// 매 순회하기 전마다 최솟값을 INT64_MAX로 갱신
-	next_tick_to_awake = INT64_MAX;
-
-	// 순회하면서 다음과 같은 작업 head부터 시작
+	// sleep list 순회
 	struct list_elem *traverse_list_elem = list_begin(&sleep_list);
 	struct thread *traverse_thread;
+	next_tick_to_awake = INT64_MAX;	// 매 순회하기 전마다 최솟값을 INT64_MAX로 갱신
 	while(traverse_list_elem != list_end(&sleep_list))
 	{
 		traverse_thread = list_entry(traverse_list_elem, struct thread, elem);
 		if(traverse_thread->wakeup_tick <= ticks)
-		{
+		{	// 스레드의 tick값이 인자로 받은 ticks보다 작거나 같은 경우
+			// 해당 스레드를 sleeplist에서 제거하고
+			// unblock: 해당 스레드를 readylist에 넣고, 상태를 READY로 변경
 			traverse_list_elem = list_remove(&traverse_thread->elem);
 			thread_unblock(traverse_thread);
 		}
-		else
-		{
+		else {// remove하지 않는 경우에는, 스레드들 중에서 최솟값을 갱신해야 함
 			traverse_list_elem = list_next(traverse_list_elem);
 			update_next_tick_to_awake(traverse_thread->wakeup_tick);
 		}
 	}
+
 }
 //--------------project1-alarm-end----------------
 
@@ -228,12 +223,13 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	
-	// 수정 시작
-	
+
+	//--------------project1-alarm-start---------------
+
 	// Sleep queue 자료구조 초기화 코드 추가
 	list_init (&sleep_list);
-	
-	// 수정 끝
+
+	//--------------project1-alarm-end----------------
 
 	list_init (&destruction_req);
 
@@ -263,6 +259,7 @@ thread_start (void) {
 
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
+// 타이머 인터럽트 핸들러에 의해 매 timer tick마다 호출되는 함수
 void
 thread_tick (void) {
 	struct thread *t = thread_current ();
@@ -360,6 +357,9 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+/*
+  매개변수로 받은 스레드를 readylist에 넣고 상태를 READY로 변경
+*/
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
