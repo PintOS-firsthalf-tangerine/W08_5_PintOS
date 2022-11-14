@@ -97,14 +97,14 @@ timer_sleep (int64_t ticks) {
 	
 	// 기존의 busy waiting을 유발하는 코드를 삭제
 	/*
-	// interrupt를 on상태인지 확인
-	// on 상태에서 들어와야 하기 때문, timer sleep 자체가 interrupt이기 때문????????????
 	ASSERT (intr_get_level () == INTR_ON);	
 	while (timer_elapsed (start) < ticks)// timer_elapsed: start부터 '현재 시각'까지 흐른 '시간'
 		thread_yield ();
 	*/
 
-	ASSERT (intr_get_level () == INTR_ON);	// interrupt가 on이어야 함
+	// INTR_ON: 인터럽트가 발생해도 되는 상태
+	// RUNNING 스레드가 중요하지 않은 일을 하고 있을 때, sleep 시켜야 한다
+	ASSERT (intr_get_level () == INTR_ON);	
 	// '시간'이 아니라 '현재 시각'으로 매개변수를 넣어줘야 함
 	// timer_elapsed: 'start(시작 시각)'부터 '현재 시각 = OS 시작부터 지금까지 흐른 시간'까지 흐른 시간
 	if(timer_elapsed(start)<ticks)	

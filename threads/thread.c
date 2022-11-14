@@ -156,10 +156,10 @@ void thread_sleep(int64_t ticks)
 	intr_set_level (old_level);	// interrupt를 다시 허용
 }
 
-//*******************************LATER***************************************
-// 추정: thread.c 함수에 매개변수로 들어오는 ticks는 '시각'이고, 
-// 		timer.c에서의 ticks는 '시간'일 것으로 추정된다...............???????????????
-//*******************************LATER***************************************
+
+// thread.c 함수에 매개변수로 들어오는 ticks는 '시각'이고, 
+// 	timer.c에서의 ticks는 '시간'이다.
+
 /*
   sleep list의 모든 스레드들을 순회하면서
   만약 깨워야 할 스레드들이 있다면, 해당 스레드를 sleep list에서 제거하고 ready list에 넣는다. 
@@ -248,7 +248,13 @@ thread_start (void) {
 	/* Create the idle thread. */
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
-	thread_create ("idle", PRI_MIN, idle, &idle_started);
+	// thread_create ("idle", PRI_MIN, idle, &idle_started);
+
+	//--------------project1-priority_scheduling-start---------------
+
+	thread_create ("idle", PRI_DEFAULT, idle, &idle_started);
+
+	//--------------project1-priority_scheduling-end-----------------
 
 	/* Start preemptive thread scheduling. */
 	intr_enable ();
@@ -332,22 +338,17 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
-	thread_unblock (t);
+	thread_unblock (t);	// t를 ready_list의 우선순위 순으로 삽입
+	// 예시: t가 curr보다 우선순위가 높다면 t는 ready_list의 맨 앞에 삽입됨
 
 	//--------------project1-priority_scheduling-start---------------
 
-	struct thread *t_curr = thread_current ();
+	struct thread *curr = thread_current ();
 
 	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위보다 높다면, CPU를 양보한다. 
-	if (t->priority > t_curr->priority) {
-		// thread_yield()함수 수정 필요 -> 새로 생성된 스레드가 ready_list의 맨 앞에 들어가야 할 듯
-		thread_yield();	
+	if (t->priority > curr->priority) {
+		thread_yield();	// 여기서 cpu 양보
 	}
-
-	// jjh
-	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위 보다 낮다면
-	// ready_list에 우선순위 순으로 삽입??
-	// jjh
 
 	//--------------project1-priority_scheduling-end-----------------
 
@@ -377,31 +378,37 @@ thread_block (void) {
    it may expect that it can atomically unblock a thread and
    update other data. */
 /*
-  매개변수로 받은 스레드를 readylist에 넣고 상태를 READY로 변경
+  매개변수로 받은 스레드를 우선순위 순으로 readylist에 넣고 상태를 READY로 변경
 */
 void
 thread_unblock (struct thread *t) {
+
 	//--------------project1-priority_scheduling-start---------------
 
-	// 스레드가 unblock될 때, 우선순위 순으로 정렬되어 ready_list에 삽입되도록 수정
-	
-	/* jjh
-	우선순위 순으로 삽입 - list_insert_ordered or list_push_back 한 다음에 list_sort?
-	list_push_back을 list_insert_ordered로?
+	// 기존 코드
+	/*
+	enum intr_level old_level;
+	ASSERT (is_thread (t));
+	old_level = intr_disable ();
+	ASSERT (t->status == THREAD_BLOCKED);
+	list_push_back (&ready_list, &t->elem); 
+	t->status = THREAD_READY;
+	intr_set_level (old_level);
 	*/
-
-	//--------------project1-priority_scheduling-end-----------------
 
 	enum intr_level old_level;
 
 	ASSERT (is_thread (t));
-
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	// list_push_back (&ready_list, &t->elem); // 원래 코드
-	list_insert_ordered(&ready_list, &t->elem, cmp_priority, 0); // jjh
+	
+	// ready list에 elem을 우선순위 순으로 넣어준다. 
+	// (ready_list는 이미 정렬된 상태) -> 새로운 스레드를 매번 우선순위 순으로 넣어주기 때문
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, 0); // 
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
+
+	//--------------project1-priority_scheduling-end-----------------
 }
 
 /* Returns the name of the running thread. */
@@ -454,7 +461,8 @@ thread_exit (void) {
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 /*
-현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 우선순위 순서로 정렬되어 삽입
+현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 우선순위 순서로 정렬되어 삽입하고, 
+do_schedule()을 호출하여  현재 스레드상태를 READY로, 다음 스레드상태를 RUNNING으로 변경
 */
 void
 thread_yield (void) {
@@ -463,9 +471,6 @@ thread_yield (void) {
 
 	// 현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 
 	// 우선순위 순서로 정렬되어 삽입되도록 수정
-	// list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0);
-
-	//--------------project1-priority_scheduling-end00---------------
 
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
@@ -478,36 +483,42 @@ thread_yield (void) {
 
 	//  current thread가 idle_thread가 아니면 ready list에 curr_elem넣기
 	if (curr != idle_thread)
-		// list_push_back (&ready_list, &curr->elem); // 기존 코드
-		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0); // jjh
-		// ready_list의 맨 뒤에 현재 elem를 넣어줌.
-		// 미래의 5조가 정리
-	do_schedule (THREAD_READY);
+	{
+		// list_push_back (&ready_list, &curr->elem); // 기존 코드 - ready_list의 맨 뒤에 현재 elem를 넣어줌.
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0); // priority-scheduling
+	}
+
+	//--------------project1-priority_scheduling-end-----------------
+
+	// 현재 스레드를 READY상태로 변경하고, 다음 스레드를 RUNNING상태로 변경
+	do_schedule (THREAD_READY);	
+
 	intr_set_level (old_level);
+
 }
 
 //--------------project1-priority_scheduling-start---------------
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+/*   
+   현재 스레드의 우선순위를 변경하고, test_max_priority를 호출한다. 
+*/
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	thread_current ()->priority = new_priority; // 현재 스레드의 우선순위 변경
 
-	// 스레드의 우선순위가 변경되었을 때, 우선순위에 따라 선점이 발생하도록 한다. 
+	if(!list_empty(&ready_list))	// ready_list가 비어있다면 test_max_priority 호출하지 않음
+		test_max_priority();
 
-	// jjh start
-	if (cmp_priority(list_front(&ready_list), &thread_current()->elem, 0))
-		thread_yield();
-	// jjh end
 }
 
 /*
+  현재 스레드의 우선순위가 ready_list의 가장 높은 우선순위보다 낮으면, 
+  thread_yield()를 호출하여, 현재 스레드를 ready_list에 넣는다.
 */
 void test_max_priority(void)
 {
-	// ready_list에서 우선순위가 가장 높은 스레드와 현재 스레드의 우선순위를 비교하여 스케줄링 한다. 
 
-	// jjh
 	// ready_list가 비어있지 않은지 확인
 	ASSERT(!list_empty(&ready_list));
 
@@ -515,27 +526,17 @@ void test_max_priority(void)
 	{
 		// 현재 스레드를 yield 시키고
 		thread_yield();
-		// thread_yield 안에 스케줄링 있음.
 	}
 	
-	// jjh end
 }
 
 /*
-a스레드의 우선순위가 b스레드의 우선순위보다 높으면 true(1), 아니면 false(0)반환
+  a스레드의 우선순위가 b스레드의 우선순위보다 높으면 true(1), 아니면 false(0) 반환
 */
 bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED)
 {
 	// list_insert_ordered() 함수에서 사용하기 위해, 정렬 방법을 결정하기 위한 함수를 작성
-	/* jjh
-	list_entry로 a와 b의 스레드를 불러와서, priority를 비교해서
-	
-	struct thread *a_t = list_entry(a, struct thread, elem);
-	struct thread *b_t = list_entry(b, struct thread, elem);
-	if(a_t->priority > b_t->priority)
-		return 1;
-	return 0;
-	*/
+
 	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
@@ -760,8 +761,9 @@ thread_launch (struct thread *th) {
 
 */
 /*
+"상태변경"
 destruction_req(list 자료형)를 모두 비워주고 
-현재 스레드의 상태를 BLOCKED로 바꾸고, 스케쥴 실행
+현재 스레드의 상태를 매개변수 status로 바꾸고, 스케쥴 실행
 */
 /* If the thread we switched from is dying, destroy its struct
 	thread. This must happen later so that thread_exit() doesn't
@@ -793,8 +795,9 @@ do_schedule(int status) {
  * finds another thread to run and switches to it.
  * It's not safe to call printf() in the schedule(). */
 /*
-	next 스레드의 status를 THREAD_RUNNING으로 변경하고, 
-	curr 스레드를 destruction_req에 넣어줌.
+	next 스레드의 status를 RUNNING으로 변경한다. 
+	만약, curr이 이미 종료된 상태이고, initial_thread가 아니라면
+	destruction_request list에 curr을 넣어준다.
 */
 static void
 schedule (void) {
