@@ -336,20 +336,18 @@ thread_create (const char *name, int priority,
 
 	//--------------project1-priority_scheduling-start---------------
 
-	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위보다 높다면, CPU를 양보한다. 
 	struct thread *t_curr = thread_current ();
 
+	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위보다 높다면, CPU를 양보한다. 
 	if (t->priority > t_curr->priority) {
 		// thread_yield()함수 수정 필요 -> 새로 생성된 스레드가 ready_list의 맨 앞에 들어가야 할 듯
 		thread_yield();	
 	}
 
-	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위 보다 낮다면 ready_list 맨 뒤에 넣어준다. 추가?????????????????
-	else
-	{
-
-	}
-
+	// jjh
+	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위 보다 낮다면
+	// ready_list에 우선순위 순으로 삽입??
+	// jjh
 
 	//--------------project1-priority_scheduling-end-----------------
 
@@ -400,7 +398,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem); // 원래 코드
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, 0); // jjh
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -454,6 +453,9 @@ thread_exit (void) {
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+/*
+현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 우선순위 순서로 정렬되어 삽입
+*/
 void
 thread_yield (void) {
 
@@ -461,8 +463,7 @@ thread_yield (void) {
 
 	// 현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 
 	// 우선순위 순서로 정렬되어 삽입되도록 수정
-	// list_lest_func *less;
-	// list_insert_ordered(&ready_list, &curr->elem, less, &curr->priorty);
+	// list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0);
 
 	//--------------project1-priority_scheduling-end00---------------
 
@@ -477,7 +478,8 @@ thread_yield (void) {
 
 	//  current thread가 idle_thread가 아니면 ready list에 curr_elem넣기
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		// list_push_back (&ready_list, &curr->elem); // 기존 코드
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0); // jjh
 		// ready_list의 맨 뒤에 현재 elem를 넣어줌.
 		// 미래의 5조가 정리
 	do_schedule (THREAD_READY);
@@ -493,22 +495,10 @@ thread_set_priority (int new_priority) {
 
 	// 스레드의 우선순위가 변경되었을 때, 우선순위에 따라 선점이 발생하도록 한다. 
 
-	/* jjh
-	-thread_create() code-
-	struct thread *t_curr = thread_current ();
-
-	if (t->priority > t_curr->priority) {
-		// thread_yield()함수 수정 필요 -> 새로 생성된 스레드가 ready_list의 맨 앞에 들어가야 할 듯
-		thread_yield();	
-	}
-
-	// 생성된 스레드의 우선순위가 현재 실행 중인 스레드의 우선순위 보다 낮다면
-	// ready_list에 우선순위 순으로 넣어준다?
-	else
-	{
-		list_insert_ordered(&ready_list, &t_curr->elem, less, &t_curr->priority);
-	}
-	*/
+	// jjh start
+	if (cmp_priority(list_front(&ready_list), &thread_current()->elem, 0))
+		thread_yield();
+	// jjh end
 }
 
 /*
@@ -516,44 +506,37 @@ thread_set_priority (int new_priority) {
 void test_max_priority(void)
 {
 	// ready_list에서 우선순위가 가장 높은 스레드와 현재 스레드의 우선순위를 비교하여 스케줄링 한다. 
+
+	// jjh
 	// ready_list가 비어있지 않은지 확인
+	ASSERT(!list_empty(&ready_list));
 
-	/* jjh
-	ready_list가 비어있지 않은지 확인 > assert(!list_empty(&ready_list))
-
-	// cmp_priority를 이용하려면, list_elem의 형태로 건내줘야됨. 
-	 
-	thread_current()->elem // 현재 스레드의 우선순위를 가지는 list_elem
-	list_front(&ready_list) // ready_list에 있는 스레드 중 최대 우선순위를 가지는 스레드
-
-	ready_list의 max_priority가 현재 스레드의 우선순위보다 크면
-	if(cmp_priority(list_front(&ready_list), thread_current()->elem, ))
+	if(cmp_priority(list_front(&ready_list), &thread_current()->elem, 0))
 	{
-		// 현재 스레드를 yield 시키고 
-
-		// ready_list의 첫번째 스레드를 running으로.
-
-		// 
-
+		// 현재 스레드를 yield 시키고
+		thread_yield();
+		// thread_yield 안에 스케줄링 있음.
 	}
-	작으면 암것도 안함.
-	*/
+	
+	// jjh end
 }
 
 /*
+a스레드의 우선순위가 b스레드의 우선순위보다 높으면 true(1), 아니면 false(0)반환
 */
 bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED)
 {
 	// list_insert_ordered() 함수에서 사용하기 위해, 정렬 방법을 결정하기 위한 함수를 작성
 	/* jjh
 	list_entry로 a와 b의 스레드를 불러와서, priority를 비교해서
-	a스레드의 우선순위가 b스레드의 우선순위보다 높으면 1반환, 아니면 0반환
+	
 	struct thread *a_t = list_entry(a, struct thread, elem);
 	struct thread *b_t = list_entry(b, struct thread, elem);
 	if(a_t->priority > b_t->priority)
 		return 1;
 	return 0;
 	*/
+	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
 
