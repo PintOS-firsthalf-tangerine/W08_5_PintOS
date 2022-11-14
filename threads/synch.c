@@ -150,17 +150,22 @@ sema_up (struct semaphore *sema) {
 //--------------project1-priority_scheduling-start---------------
 
 /*
-waiters list에 있는, a 스레드의 우선순위가 b 스레드의 우선순위보다 높으면 1(true), 낮으면 0(false) 반환
+semaphore_elem-waiters_list a의 HEAD(우선순위가 가장 높은 스레드) 우선순위가
+semaphore_elem-waiters_list b의 HEAD(우선순위가 가장 높은 스레드) 우선순위보다
+높으면 1(true), 낮으면 0(false) 반환
 */
 bool cmp_sem_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
 	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
 	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
 
+	struct list_elem *l_a = list_begin(&(sa->semaphore.waiters));
+	struct list_elem *l_b = list_begin(&(sb->semaphore.waiters));
 
-	return sa->priority > sb->priority;
-
-	// return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+	struct thread *t_a = list_entry(l_a, struct thread, elem);
+	struct thread *t_b = list_entry(l_b, struct thread, elem);
+	
+	return t_a->priority > t_b->priority;
 }
 
 //--------------project1-priority_scheduling-end-----------------
@@ -289,7 +294,6 @@ lock_held_by_current_thread (const struct lock *lock) {
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;         /* This semaphore. */
-	int priority;
 };
 
 /* Initializes condition variable COND.  A condition variable
