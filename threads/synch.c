@@ -59,6 +59,11 @@ sema_init (struct semaphore *sema, unsigned value) {
    sema_down function. */
 void
 sema_down (struct semaphore *sema) {
+	//--------------project1-priority_scheduling-start---------------
+
+	// waiters 리스트 삽입 시, 우선순위대로 삽입되도록 수정
+
+	//--------------project1-priority_scheduling-end-----------------
 	enum intr_level old_level;
 
 	ASSERT (sema != NULL);
@@ -110,11 +115,47 @@ sema_up (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters))
+	//--------------project1-priority_scheduling-start---------------
+
+		// 스레드가 waiters list에 있는 동안 우선순위가 변경되었을 경우를 고려하여
+		// waiters list를 우선순위로 정렬한다. 
+
+	//--------------project1-priority_scheduling-end-----------------
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
 	sema->value++;
+
+	//--------------project1-priority_scheduling-start---------------
+
+	// priority preemption 코드 추가
+
+	//--------------project1-priority_scheduling-end-----------------
+
+
 	intr_set_level (old_level);
 }
+
+//--------------project1-priority_scheduling-start---------------
+
+/*
+*/
+bool cmp_sem_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
+	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
+	
+	// 해당 condition variable을 기다리는 세마포어 리스트를 
+	// 가장 높은 우선순위를 가지는 스레드의 우선순위 순으로 정렬하도록 구현
+}
+
+
+
+
+
+
+
+
+//--------------project1-priority_scheduling-end-----------------
 
 static void sema_test_helper (void *sema_);
 
@@ -235,7 +276,7 @@ lock_held_by_current_thread (const struct lock *lock) {
 
 	return lock->holder == thread_current ();
 }
-
+
 /* One semaphore in a list. */
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
@@ -274,6 +315,11 @@ cond_init (struct condition *cond) {
    we need to sleep. */
 void
 cond_wait (struct condition *cond, struct lock *lock) {
+	//--------------project1-priority_scheduling-start---------------
+
+	// condition variableDML waiters list에 우선순위 순서로 삽입되도록 수정
+
+	//--------------project1-priority_scheduling-end-----------------
 	struct semaphore_elem waiter;
 
 	ASSERT (cond != NULL);
@@ -303,6 +349,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	if (!list_empty (&cond->waiters))
+		// condition variable의 waiters list를 우선순위로 재정렬
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
 }
@@ -321,3 +368,5 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
 }
+
+

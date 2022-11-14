@@ -62,7 +62,7 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
-#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+#define TIME_SLICE 4            /* # of timer ticks to give each thread. */ // time quantum: 40ms
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* If false (default), use round-robin scheduler.
@@ -518,7 +518,7 @@ thread_set_priority (int new_priority) {
 */
 void test_max_priority(void)
 {
-
+ 
 	// ready_list가 비어있지 않은지 확인
 	ASSERT(!list_empty(&ready_list));
 
@@ -536,7 +536,8 @@ void test_max_priority(void)
 bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED)
 {
 	// list_insert_ordered() 함수에서 사용하기 위해, 정렬 방법을 결정하기 위한 함수를 작성
-
+	// elem 선언 안해도 들어가는 이유 
+	// -> struct thread는 전역변수로 선언(thread.h에)되어 있으므로, 그 멤버인 elem을 사용 가능
 	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
