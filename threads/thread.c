@@ -507,9 +507,7 @@ void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority; // 현재 스레드의 우선순위 변경
 
-	if(!list_empty(&ready_list))	// ready_list가 비어있다면 test_max_priority 호출하지 않음
-		test_max_priority();
-
+	test_max_priority();
 }
 
 /*
@@ -518,13 +516,15 @@ thread_set_priority (int new_priority) {
 */
 void test_max_priority(void)
 {
- 
-	// ready_list가 비어있지 않은지 확인
-	ASSERT(!list_empty(&ready_list));
+	// ASSERT(!list_empty(&ready_list));
+	// ready_list가 비어있다면 test_max_priority 호출하지 않음
+	if(list_empty(&ready_list))
+		return;
 
 	if(cmp_priority(list_front(&ready_list), &thread_current()->elem, 0))
 	{
-		// 현재 스레드를 yield 시키고
+		// yield를 호출하여 현재 스레드를 READY로 만들고,
+		// ready_list에 넣는다.
 		thread_yield();
 	}
 	

@@ -146,13 +146,7 @@ int64_t get_next_tick_to_awake(void);
 
 //--------------project1-priority_scheduling-start---------------
 
-// 현재 수행 중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케쥴링
-void test_max_priority(void);
-
-/*
-인자로 주어진 스레드들의 우선순위를 비교.
-a스레드의 우선순위가 b스레드의 우선순위보다 높으면 1반환, 아니면 0반환
-*/ 
+void test_max_priority(void); 
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 //--------------project1-priority_scheduling-end-----------------
