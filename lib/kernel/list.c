@@ -75,6 +75,8 @@ list_begin (struct list *list) {
    undefined if ELEM is itself a list tail. */
 struct list_elem *
 list_next (struct list_elem *elem) {
+	ASSERT(is_head(elem));
+	ASSERT(is_interior(elem));
 	ASSERT (is_head (elem) || is_interior (elem));
 	return elem->next;
 }
