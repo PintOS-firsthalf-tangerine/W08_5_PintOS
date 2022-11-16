@@ -92,31 +92,14 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-	//--------------project1_1-alarm-start--------------
+	//--------------project1-alarm-start--------------
 	// 깨어나야할 tick을 저장할 변수 추가
 	int64_t wakeup_tick;
 	
-	//--------------project1_1-alarm-end----------------
+	//--------------project1-alarm-end----------------
 
 	/* Shared between thread.c and synch.c. */
-	// thread.c에서는 run queue의 element로, synch.c에서는 semaphore wait list로 사용됨
-	struct list_elem elem;		/* List element. */
-
-	//--------------project1_3-priority_donation-start---------------
-	
-	// donation 이후, 우선순위를 초기화하기 위해 초기값 저장
-	int init_priority;
-
-	// 해당 스레드가 대기하고 있는 lock 자료구조의 주소를 저장
-	struct lock *wait_on_lock;	//?????????? 2개 이상이면??????????
-	
-	// multiple donation을 고려하기 위해 사용
-	struct list donations;	// 내가 donation 받을 때
-
-	// multiple donation을 고려하기 위해 사용
-	struct list_elem donation_elem;	// 내가 donation 할까봐
-
-	//--------------project1_3-priority_donation-end-----------------
+	struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -138,7 +121,7 @@ struct thread {
 extern bool thread_mlfqs;
 
 
-//--------------project1_1-alarm-start--------------
+//--------------project1-alarm-start--------------
 
 // 전역 변수 이동
 // sleep queue
@@ -159,22 +142,14 @@ void update_next_tick_to_awake(int64_t ticks);
 // thread.c의 next_tick_to_awake 반환
 int64_t get_next_tick_to_awake(void);
 
-//--------------project1_1-alarm-end----------------
+//--------------project1-alarm-end----------------
 
-//--------------project1_2-priority_scheduling-start---------------
+//--------------project1-priority_scheduling-start---------------
 
 void test_max_priority(void); 
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
-//--------------project1_2-priority_scheduling-end-----------------
-
-//--------------project1_3-priority_donation-start---------------
-
-void donate_priority(void);
-void remove_with_lock(struct lock *lock);
-void refresh_priority(void);
-
-//--------------project1_3-priority_donation-end-----------------
+//--------------project1-priority_scheduling-end-----------------
 
 void thread_init (void);
 void thread_start (void);
