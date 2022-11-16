@@ -108,7 +108,7 @@ struct thread {
 	int init_priority;
 
 	// 해당 스레드가 대기하고 있는 lock 자료구조의 주소를 저장
-	struct lock *wait_on_lock;	//?????????? 2개 이상이면??????????
+	struct lock *wait_on_lock;	
 	
 	// multiple donation을 고려하기 위해 사용
 	struct list donations;	// 내가 donation 받을 때
@@ -173,6 +173,7 @@ bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *au
 void donate_priority(void);
 void remove_with_lock(struct lock *lock);
 void refresh_priority(void);
+bool thread_compare_donate_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 //--------------project1_3-priority_donation-end-----------------
 

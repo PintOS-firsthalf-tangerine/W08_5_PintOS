@@ -274,10 +274,12 @@ lock_acquire (struct lock *lock) {
 
 		// multiple donation을 고려하기 위해, 이전상태의 우선순위를 기억
 		// priority를 다시 init_priority로 바꿈
-		thread_current()->priority = thread_current()->init_priority;
-		// donation을 받은 스레드의 thread 구조체를 list로 관리한다. 
-		//?????????????????
+		// thread_current()->priority = thread_current()->init_priority;
+		// donation을 받은 스레드의 thread 구조체를 list로 관리한다.
+
 		// list_init(&thread_current()->donations);
+
+		list_insert_ordered(&lock->holder->donations, &thread_current()->donation_elem, thread_compare_donate_priority, 0);
 
 		// priority donation을 수행하기 위해 donate_priority() 함수 호출
 		donate_priority();
@@ -288,7 +290,7 @@ lock_acquire (struct lock *lock) {
 	// lock을 획득한 후, lock holder를 갱신한다.
 	lock->holder = thread_current();
 	
-	thread_current()->wait_on_lock = NULL;// ??????????????????????????????
+	thread_current()->wait_on_lock = NULL;// 
 	
 }
 
