@@ -506,7 +506,8 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority; // 현재 스레드의 우선순위 변경
-
+	refresh_priority();
+	donate_priority();
 	test_max_priority();
 }
 
@@ -541,6 +542,54 @@ bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* au
 	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
+//
+bool thread_compare_donate_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	return list_entry(a, struct thread, donation_elem)->priority > list_entry(b, struct thread, donation_elem);
+}
+
+void donate_priority(void)
+{
+	int depth;
+    struct thread *cur = thread_current();
+    
+    for (depth =0; depth < 8; depth++) {
+    	if (!cur->wait_on_lock) // 기다리는 lock이 없다면 종료
+        	break;
+        struct thread *holder = cur->wait_on_lock->holder;
+		if (holder->priority < cur->priority)
+        	holder->priority = cur->priority;
+        cur = holder;
+    }
+}
+
+void remove_with_lock (struct lock *lock)
+{
+  struct list_elem *e;
+  struct thread *cur = thread_current ();
+
+  for (e = list_begin (&cur->donations); e != list_end (&cur->donations); e = list_next (e)){
+    struct thread *t = list_entry (e, struct thread, donation_elem);
+    if (t->wait_on_lock == lock)
+      list_remove (&t->donation_elem);
+  }
+}
+
+void refresh_priority (void)
+{
+  struct thread *cur = thread_current ();
+
+  cur->priority = cur->init_priority;
+  
+  if (!list_empty (&cur->donations)) {
+    list_sort (&cur->donations, thread_compare_donate_priority, 0);
+
+    struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
+    if (front->priority > cur->priority)
+      cur->priority = front->priority;
+  }
+}
+//
 
 /* Returns the current thread's priority. */
 int
@@ -641,6 +690,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 	//--------------project1-alarm-start--------------
 	t->wakeup_tick = 0;
+	//--------------project1-alarm-end----------------
+	t->wait_on_lock = NULL;
+	t->init_priority = priority;
+	list_init(&t->donations);
 	//--------------project1-alarm-end----------------
 }
 

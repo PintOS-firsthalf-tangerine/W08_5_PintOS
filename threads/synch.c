@@ -262,9 +262,26 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	struct thread *curr = thread_current();
+
+	if(lock->holder != NULL)
+	{
+		curr->wait_on_lock = lock;
+
+		curr->priority = curr->init_priority;
+
+		list_insert_ordered(&lock->holder->donations, &curr->donation_elem, thread_compare_donate_priority, 0);
+
+		
+		donate_priority();
+	}
+
 	sema_down (&lock->semaphore);
+	curr->wait_on_lock = NULL;
 	lock->holder = thread_current ();
 }
+
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -296,6 +313,14 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
+	//
+	// remove with lock(lock)
+	remove_with_lock(lock);
+	// refresh priority()
+	refresh_priority();
+
+	//
+
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
@@ -309,6 +334,8 @@ lock_held_by_current_thread (const struct lock *lock) {
 
 	return lock->holder == thread_current ();
 }
+
+
 
 
 /* Initializes condition variable COND.  A condition variable
