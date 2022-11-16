@@ -18,7 +18,7 @@
 #endif
 
 /* Number of timer ticks since OS booted. */
-static int64_t ticks;
+static int64_t ticks;	// OS 시작하고부터 현재까지 흐른 시간 = '현재 시각'
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -87,46 +87,33 @@ timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
 }
 
+//--------------project1-alarm-start--------------
+
 /* Suspends execution for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) {
 
-	int64_t start = timer_ticks();	// 시작 시간 들어옴	
-
-	// 수정 시작
-	/*
-
-	O 기존의 busy waiting을 유발하는 코드를 삭제
-
-	새로 구현한 thread를 sleep queue에 삽입하는 함수를 호출
-
-	스레드(thread)란 프로세스(process) 내에서 실제로 작업을 수행하는 주체를 의미
+	int64_t start = timer_ticks();	// '시작 시각' 들어옴	
 	
+	// 기존의 busy waiting을 유발하는 코드를 삭제
+	/*
+	ASSERT (intr_get_level () == INTR_ON);	
+	while (timer_elapsed (start) < ticks)// timer_elapsed: start부터 '현재 시각'까지 흐른 '시간'
+		thread_yield ();
 	*/
 
-	if(timer_elapsed(start)<ticks)
-		thread_sleep(start+ticks);	
+	// INTR_ON: 인터럽트가 발생해도 되는 상태
+	// RUNNING 스레드가 중요하지 않은 일을 하고 있을 때, sleep 시켜야 한다
+	ASSERT (intr_get_level () == INTR_ON);	
+	// '시간'이 아니라 '현재 시각'으로 매개변수를 넣어줘야 함
+	// timer_elapsed: 'start(시작 시각)'부터 '현재 시각 = OS 시작부터 지금까지 흐른 시간'까지 흐른 시간
+	if(timer_elapsed(start)<ticks)	
+		thread_sleep(start+ticks);	// thread_sleep: 스레드를 sleep list에 삽입하는 함수
+		// 스레드가 깨어나야할 '시각' = start+ticks
 
-	// interrupt를 on상태인지 확인
-	// on 상태에서 들어와야 하기 때문, timer sleep 자체가 interrupt이기 때문??????????????
-	// ASSERT (intr_get_level () == INTR_ON);	
-	
-	// thread_init();
-	// sleep으로 가려면 BLock상태이어야 하고, Block상태로 가려면 이전에 running 상태이어야 한다
-	// struct thread *curr = running_thread();	
-
-	// // init한 스레드의 원소를 가져와서 매개변수로 넣어주면 됨.
-	// if(curr != idle_thread)
-		
-	// 	// list_push_back(&sleep_list, &curr->elem);
-	// 수정 끝
-
-	// if(curr != initial_thread)
-	// 원래 코드
-	// ASSERT (intr_get_level () == INTR_ON);	
-	// while (timer_elapsed (start) < ticks)
-	// 	thread_yield ();
 }
+
+//--------------project1-alarm-end----------------
 
 /* Suspends execution for approximately MS milliseconds. */
 void
@@ -152,33 +139,23 @@ timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
-// 수정 시작
+//--------------project1-alarm-start--------------
 /* Timer interrupt handler. */
+// CPU에 내장된 타이머가 자동으로 timer interrupt를 매 tick마다 실행함
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 
-	ticks++;
-	thread_tick ();	// update the cpu usage for running process
-	
-	// check sleeplist and the global tick
+	ticks++;	// ticks 값 1씩 증가
 
+	// idle ticks, kernel ticks, user ticks 측정 결과를 출력함
+	thread_tick ();	// update the cpu usage for running process - statistics
 
-	// find any threads to wake up
-
-	// move them to the ready list if necessary
-
-	// update the global tick
-
+	// '현재 시각'이 '깨워야할 스레드 시각'과 같거나 더 흘렀다면 
 	if(get_next_tick_to_awake() <= ticks)
-		thread_awake(ticks);
+		thread_awake(ticks);	// sleep list에서 깨워야할 스레드를 찾아서 깨움
 }
-// 기존 코드
-// static void
-// timer_interrupt (struct intr_frame *args UNUSED) {
-// 	ticks++;
-// 	thread_tick ();
-// }
-// 수정 끝
+
+//--------------project1-alarm-end----------------
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
