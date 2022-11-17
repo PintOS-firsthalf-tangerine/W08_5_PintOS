@@ -224,7 +224,7 @@ sema_test_helper (void *sema_) {
 		sema_up (&sema[1]);
 	}
 }
-
+
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
    is, it is an error for the thread currently holding a lock to
@@ -264,21 +264,34 @@ lock_acquire (struct lock *lock) {
 
 	struct thread *curr = thread_current();
 
-	if(lock->holder != NULL)
+
+	// 해당 lock의 holder가 존재한다면, 아래 작업을 수행한다. 
+	if (lock->holder)
 	{
 		curr->wait_on_lock = lock;
 
-		curr->priority = curr->init_priority;
+		// multiple donation을 고려하기 위해, 이전상태의 우선순위를 기억
+		// priority를 다시 init_priority로 바꿈
+		// thread_current()->priority = thread_current()->init_priority;
+		// donation을 받은 스레드의 thread 구조체를 list로 관리한다.
 
-		list_insert_ordered(&lock->holder->donations, &curr->donation_elem, thread_compare_donate_priority, 0);
+		// list_init(&thread_current()->donations);
 
-		
+		list_insert_ordered(&lock->holder->donations, &thread_current()->donation_elem, thread_compare_donate_priority, 0);
+
+		// priority donation을 수행하기 위해 donate_priority() 함수 호출
 		donate_priority();
 	}
 
-	sema_down (&lock->semaphore);
-	curr->wait_on_lock = NULL;
-	lock->holder = thread_current ();
+
+  sema_down (&lock->semaphore);
+	// lock을 획ㅣ득한 후, lock holder를 갱신한다.
+	lock->holder = thread_current();
+	
+	thread_current()->wait_on_lock = NULL;// 
+	
+	
+
 }
 
 
