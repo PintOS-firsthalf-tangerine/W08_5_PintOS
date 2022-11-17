@@ -105,23 +105,10 @@ struct thread {
 
 	//--------------project1_3-priority_donation-start---------------
 	
-	// donation 이후, 우선순위를 초기화하기 위해 초기값 저장
-
-	int init_priority;
-	struct lock *wait_on_lock;
-	struct list donations;
-	struct list_elem donation_elem;
-	//--------------project1-3-alarm-end----------------
-
-
-	// 해당 스레드가 대기하고 있는 lock 자료구조의 주소를 저장
-	struct lock *wait_on_lock;	
-	
-	// multiple donation을 고려하기 위해 사용
-	struct list donations;	// 내가 donation 받을 때
-
-	// multiple donation을 고려하기 위해 사용
-	struct list_elem donation_elem;	// 내가 donation 할까봐
+	int init_priority;			// donation 이후, 우선순위를 초기화하기 위해 초기값 저장
+	struct lock *wait_on_lock;	// 해당 스레드가 대기 하고 있는 lock 자료구조의 주소를 저장
+	struct list donations;		// 나(스레드)에게 donation을 준 스레드들의 리스트 (내가 donation 받을 때)
+	struct list_elem donation_elem;	// 내가 donation을 줄 때 리스트 속의 나(스레드)
 
 	//--------------project1_3-priority_donation-end-----------------
 

@@ -256,6 +256,12 @@ lock_init (struct lock *lock) {
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+
+/*
+  해당 lock에 holder가 존재하지 않는다면, 현재 스레드가 lock 획득
+  해당 lock에 holder가 이미 존재한다면, lock을 차지하고 있거나
+  기다리고 있는 스레드들에게 우선순위를 donate 함.
+*/
 void
 lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
@@ -264,34 +270,33 @@ lock_acquire (struct lock *lock) {
 
 	struct thread *curr = thread_current();
 
-
 	// 해당 lock의 holder가 존재한다면, 아래 작업을 수행한다. 
 	if (lock->holder)
 	{
-		curr->wait_on_lock = lock;
+		curr->wait_on_lock = lock; // 현재 스레드가 기다리고 있는 lock
 
 		// multiple donation을 고려하기 위해, 이전상태의 우선순위를 기억
-		// priority를 다시 init_priority로 바꿈
-		// thread_current()->priority = thread_current()->init_priority;
-		// donation을 받은 스레드의 thread 구조체를 list로 관리한다.
+		// donate 하기 전에 init_priority를 다시 priority로 설정함
+		// init_thread에서 이미 init_priority를 설정함
+		// thread_current()->init_priority = thread_current()->priority;
+		
 
-		// list_init(&thread_current()->donations);
-
+		// lock을 잡고 있는 스레드의 donations 리스트에 현재 스레드를 우선순위 순으로 삽입
 		list_insert_ordered(&lock->holder->donations, &thread_current()->donation_elem, thread_compare_donate_priority, 0);
 
-		// priority donation을 수행하기 위해 donate_priority() 함수 호출
+		// donation을 받은 스레드의 thread 구조체를 list로 관리한다.
+		// priority donation을 수행
 		donate_priority();
 	}
 
 
-  sema_down (&lock->semaphore);
-	// lock을 획ㅣ득한 후, lock holder를 갱신한다.
-	lock->holder = thread_current();
-	
-	thread_current()->wait_on_lock = NULL;// 
-	
-	
+  	sema_down (&lock->semaphore);
 
+	// lock을 획득한 후, lock holder를 갱신한다.
+	lock->holder = thread_current();
+
+	// lock을 이미 획득, NULL로 설정해야 확실히 다음 기다리는 lock을 기다리지 않는 상태임을 알 수 있다.	
+	thread_current()->wait_on_lock = NULL;	
 }
 
 
@@ -321,18 +326,20 @@ lock_try_acquire (struct lock *lock) {
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
+
+/*
+  lock 해제
+*/
 void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
-	//
-	// remove with lock(lock)
+	// 현재 스레드를 다른 스레드들의 donations에서 제거
 	remove_with_lock(lock);
-	// refresh priority()
-	refresh_priority();
 
-	//
+	// 원래 우선순위로 돌아감
+	refresh_priority();
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
