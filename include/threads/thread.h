@@ -100,7 +100,7 @@ struct thread {
 
 	/* Shared between thread.c and synch.c. */
 	// thread.c에서는 run queue의 element로, synch.c에서는 semaphore wait list로 사용됨
-	struct list_elem elem;		/* List element. */
+	struct list_elem elem;		/* List element. */ // 
 
 	//--------------project1_3-priority_donation-start---------------
 	
