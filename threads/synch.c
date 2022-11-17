@@ -80,12 +80,12 @@ sema_down (struct semaphore *sema) {
 	// 사용할 수 있는 공유 자원(semaphore value)이 없을 때(while문으로)
 	// waiters list에 현재 스레드들을 우선순위 순으로 삽입
 	while (sema->value == 0) {
-		//--------------project1_2-priority_scheduling-start---------------
+		//--------------project1-priority_scheduling-start---------------
 		// list_push_back (&sema->waiters, &thread_current ()->elem); // 기존 코드
 		
 		list_insert_ordered (&sema->waiters, &thread_current ()->elem, cmp_priority, 0);
 
-		//--------------project1_2-priority_scheduling-end-----------------
+		//--------------project1-priority_scheduling-end-----------------
 
 		// 현재 스레드를 BLOCK상태로 변경 후 schedule(next를 RUNNING상태로)
 		thread_block ();
@@ -139,7 +139,7 @@ sema_up (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters))
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 	{
 		// 스레드가 waiters list에 있는 동안 우선순위가 변경되었을 경우를 고려하여
 		// 세마포어에 있는 스레드들을 우선순위 정렬
@@ -160,12 +160,12 @@ sema_up (struct semaphore *sema) {
 	// priority preemption
 	test_max_priority();
 
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 	intr_set_level (old_level);
 }
 
 
-//--------------project1_2-priority_scheduling-start---------------
+//--------------project1-priority_scheduling-start---------------
 
 /*
 세마포어의 waiters_list의 맨앞 스레드의 우선순위를 비교.
@@ -188,7 +188,7 @@ bool cmp_sem_priority(const struct list_elem *a, const struct list_elem *b, void
 	return t_a->priority > t_b->priority;
 }
 
-//--------------project1_2-priority_scheduling-end-----------------
+//--------------project1-priority_scheduling-end-----------------
 
 static void sema_test_helper (void *sema_);
 
@@ -224,7 +224,7 @@ sema_test_helper (void *sema_) {
 		sema_up (&sema[1]);
 	}
 }
-
+
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
    is, it is an error for the thread currently holding a lock to
@@ -262,15 +262,13 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
-	// 기존 코드
-	// sema_down (&lock->semaphore);
-	// lock->holder = thread_current ();
+	struct thread *curr = thread_current();
+
 
 	// 해당 lock의 holder가 존재한다면, 아래 작업을 수행한다. 
 	if (lock->holder)
 	{
-		// 현재 스레드의 wait_on_lock 변수에 획득하기를 기다리는 lock의 주소를 저장
-		thread_current()->wait_on_lock = lock;
+		curr->wait_on_lock = lock;
 
 		// multiple donation을 고려하기 위해, 이전상태의 우선순위를 기억
 		// priority를 다시 init_priority로 바꿈
@@ -284,15 +282,19 @@ lock_acquire (struct lock *lock) {
 		// priority donation을 수행하기 위해 donate_priority() 함수 호출
 		donate_priority();
 	}
-	
-	sema_down (&lock->semaphore);
 
-	// lock을 획득한 후, lock holder를 갱신한다.
+
+  sema_down (&lock->semaphore);
+	// lock을 획ㅣ득한 후, lock holder를 갱신한다.
 	lock->holder = thread_current();
 	
 	thread_current()->wait_on_lock = NULL;// 
 	
+	
+
 }
+
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -324,13 +326,15 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
-	lock->holder = NULL;
-
-	// remove_with_lock() 함수 추가
+	//
+	// remove with lock(lock)
 	remove_with_lock(lock);
-	// // refresh_priority() 함수 추가
+	// refresh priority()
 	refresh_priority();
 
+	//
+
+	lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
 
@@ -343,6 +347,9 @@ lock_held_by_current_thread (const struct lock *lock) {
 
 	return lock->holder == thread_current ();
 }
+
+
+
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -393,12 +400,12 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	// 세마포어의 value를 0으로, waiters 리스트를 초기화
 	sema_init (&waiter.semaphore, 0);
 
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 	// list_push_back (&cond->waiters, &waiter.elem); // 기존 코드
 
 	// conditional variable의 waiters 리스트에 waiter.elem(semaphore_elem->elem)을 우선순위 순으로 넣어줌.
 	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, 0);
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 
 	/* 
 	lock을 반환함(lock의 holder를 NULL로), 여기서 lock은 mutex_lock.
@@ -464,5 +471,4 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
 }
-
 

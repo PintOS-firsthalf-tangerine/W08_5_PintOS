@@ -33,8 +33,7 @@ static struct list all_list;
 
 static struct thread *idle_thread;
 
-//--------------project1_1-alarm-start--------------
-
+//--------------project1-alarm-start--------------
 
 // THREAD_BLOCKED 상태의 스레드를 관리하기 위한 리스트 자료 구조 추가 >> Sleep_queue
 static struct list sleep_list;
@@ -45,7 +44,7 @@ next_tick_to_awake: sleep_list에 있는 모든 스레드들의 wakeup_tick값 �
 */
 int64_t next_tick_to_awake = INT64_MAX;
 
-//--------------project1_1-alarm-end----------------
+//--------------project1-alarm-end----------------
 
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
@@ -99,7 +98,7 @@ static tid_t allocate_tid (void);
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
-//--------------project1_1-alarm-start--------------
+//--------------project1-alarm-start--------------
 
 /*
  * next_tick_to_awake 업데이트하는 함수
@@ -189,7 +188,7 @@ void thread_awake(int64_t ticks)
 	}
 
 }
-//--------------project1_1-alarm-end-----------------
+//--------------project1-alarm-end-----------------
 
 
 /* Initializes the threading system by transforming the code
@@ -225,12 +224,12 @@ thread_init (void) {
 	list_init (&ready_list);
 	
 
-	//--------------project1_1-alarm-start---------------
+	//--------------project1-alarm-start---------------
 
 	// Sleep queue 자료구조 초기화 코드 추가
 	list_init (&sleep_list);
 
-	//--------------project1_1-alarm-end-----------------
+	//--------------project1-alarm-end-----------------
 
 	list_init (&destruction_req);
 
@@ -251,11 +250,11 @@ thread_start (void) {
 	sema_init (&idle_started, 0);
 	// thread_create ("idle", PRI_MIN, idle, &idle_started);
 
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 
 	thread_create ("idle", PRI_DEFAULT, idle, &idle_started);
 
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 
 	/* Start preemptive thread scheduling. */
 	intr_enable ();
@@ -342,7 +341,7 @@ thread_create (const char *name, int priority,
 	thread_unblock (t);	// t를 ready_list의 우선순위 순으로 삽입
 	// 예시: t가 curr보다 우선순위가 높다면 t는 ready_list의 맨 앞에 삽입됨
 
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 
 	struct thread *curr = thread_current ();
 
@@ -351,7 +350,7 @@ thread_create (const char *name, int priority,
 		thread_yield();	// 여기서 cpu 양보
 	}
 
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 
 	return tid;
 }
@@ -384,7 +383,7 @@ thread_block (void) {
 void
 thread_unblock (struct thread *t) {
 
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 
 	// 기존 코드
 	/*
@@ -409,7 +408,7 @@ thread_unblock (struct thread *t) {
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 }
 
 /* Returns the name of the running thread. */
@@ -468,7 +467,7 @@ do_schedule()을 호출하여  현재 스레드상태를 READY로, 다음 스레
 void
 thread_yield (void) {
 
-	//--------------project1_2-priority_scheduling-start---------------
+	//--------------project1-priority_scheduling-start---------------
 
 	// 현재 thread가 CPU를 양보하여 ready_list에 삽입될 때, 
 	// 우선순위 순서로 정렬되어 삽입되도록 수정
@@ -489,7 +488,7 @@ thread_yield (void) {
 		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, 0); // priority-scheduling
 	}
 
-	//--------------project1_2-priority_scheduling-end-----------------
+	//--------------project1-priority_scheduling-end-----------------
 
 	// 현재 스레드를 READY상태로 변경하고, 다음 스레드를 RUNNING상태로 변경
 	do_schedule (THREAD_READY);	
@@ -498,7 +497,7 @@ thread_yield (void) {
 
 }
 
-//--------------project1_2-priority_scheduling-start---------------
+//--------------project1-priority_scheduling-start---------------
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 /*   
@@ -506,7 +505,6 @@ thread_yield (void) {
 */
 void
 thread_set_priority (int new_priority) {
-	/* 기존 코드
 	thread_current ()->priority = new_priority; // 현재 스레드의 우선순위 변경
 
 	test_max_priority();
@@ -524,13 +522,12 @@ thread_set_priority (int new_priority) {
 	thread_current ()->init_priority = new_priority;
 
 	//if (!list_empty(&thread_current()->donations)){	// donations(내가 donation 받은)가 비었으면 실행 안함
+
 	refresh_priority();
 	donate_priority();
 	//}
 
 	test_max_priority();
-
-	//--------------project1_3-priority_donation-end-----------------
 }
 
 /*
@@ -564,11 +561,10 @@ bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* au
 	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
-
-/* Returns the current thread's priority. */
-int
-thread_get_priority (void) {
-	return thread_current ()->priority;
+//
+bool thread_compare_donate_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	return list_entry(a, struct thread, donation_elem)->priority > list_entry(b, struct thread, donation_elem);
 }
 
 //--------------project1_2-priority_scheduling-end-----------------
@@ -633,9 +629,9 @@ void donate_priority(void)
 /*
 */
 void remove_with_lock(struct lock *lock)
-{
-	// lock을 해지했을 때, donations 리스트에서 해당 엔트리를
-	// 삭제하기 위한 함수를 구현한다. 
+
+  struct list_elem *e;
+  struct thread *cur = thread_current ();
 
 	// 현재 스레드의 donations 리스트를 확인하여,
 
@@ -691,8 +687,7 @@ void remove_with_lock(struct lock *lock)
 
 }
 
-
-void refresh_priority(void)
+void refresh_priority (void)
 {
 	// 스레드의 우선순위가 변경되었을 때, donation을 고려하여 우선순위를 
 	// 다시 결정하는 함수를 작성한다. 
@@ -723,21 +718,28 @@ void refresh_priority(void)
 	// 		thread_current()->priority = traverse_thread->priority;
 	// 	traverse = traverse->next;
 	// }
+  // struct thread *cur = thread_current ();
 
-	// 가장 우선순위가 높은 donations 리스트의 스레드와
-	// 현재 스레드의 우선순위를 비교하여, 높은 값을 현재 스레드의 우선순위로 설정한다.
-	// struct list_elem *max_priority_elem = list_back(&thread_current()->donations);
-	// struct list_elem *max_priority_elem = list_max(&thread_current()->donations, )
-	// struct thread *max_priority_thread = list_entry(max_priority_elem, struct thread, donation_elem);
-	// struct thread *max_priority_thread = list_entry(max_priority_elem, struct thread, donation_elem);
-	// if (max_priority_thread->priority > thread_current()->priority)
-	// {
-	// 	thread_current()->priority = max_priority_thread->priority;
-	// }
+  // cur->priority = cur->init_priority;
+  
+  // if (!list_empty (&cur->donations)) {
+  //   list_sort (&cur->donations, thread_compare_donate_priority, 0);
 
+
+    struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
+    if (front->priority > cur->priority)
+      cur->priority = front->priority;
+  }
+}
+//
+
+/* Returns the current thread's priority. */
+int
+thread_get_priority (void) {
+	return thread_current ()->priority;
 }
 
-//--------------project1_3-priority_donation-end-----------------
+//--------------project1-priority_scheduling-end-----------------
 
 /* Sets the current thread's nice value to NICE. */
 void
@@ -828,21 +830,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-	//--------------project1_1-alarm-start--------------
+	//--------------project1-alarm-start--------------
 	t->wakeup_tick = 0;
-	//--------------project1_1-alarm-end----------------
-
-	//--------------project1_3-priority_donation-start---------------
-	
-	// priority donation관련 자료구조 초기화
-	t->init_priority = priority;
+	//--------------project1-alarm-end----------------
 	t->wait_on_lock = NULL;
-
-	// donations 리스트 초기화
+	t->init_priority = priority;
 	list_init(&t->donations);
-	// t->donation_elem
-
-	//--------------project1_3-priority_donation-end-----------------
+	//--------------project1-alarm-end----------------
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
