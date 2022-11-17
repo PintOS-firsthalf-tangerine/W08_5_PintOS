@@ -267,7 +267,7 @@ lock_acquire (struct lock *lock) {
 	// lock->holder = thread_current ();
 
 	// 해당 lock의 holder가 존재한다면, 아래 작업을 수행한다. 
-	if (lock->holder != NULL)
+	if (lock->holder)
 	{
 		// 현재 스레드의 wait_on_lock 변수에 획득하기를 기다리는 lock의 주소를 저장
 		thread_current()->wait_on_lock = lock;

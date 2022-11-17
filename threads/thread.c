@@ -521,14 +521,13 @@ thread_set_priority (int new_priority) {
 
 
 	thread_current ()->priority = new_priority;
-	// thread_current ()->init_priority = new_priority;
+	thread_current ()->init_priority = new_priority;
 
+	//if (!list_empty(&thread_current()->donations)){	// donations(내가 donation 받은)가 비었으면 실행 안함
 	refresh_priority();
-	// donate_priority(), test_max_priority() 함수를 적절히 사용하여
-	// priority donation을 수행하고 스케쥴링한다. 
-
-	
 	donate_priority();
+	//}
+
 	test_max_priority();
 
 	//--------------project1_3-priority_donation-end-----------------
@@ -640,16 +639,31 @@ void remove_with_lock(struct lock *lock)
 
 	// 현재 스레드의 donations 리스트를 확인하여,
 
-	struct list dn = thread_current()->donations;
-	struct list_elem *start = list_begin(&dn);
+	/* 현재 스레드의 donations 리스트를 확인하여 해지 할 lock 을 보유하고 있는 엔트리를 삭제 한다. */
+	struct thread *cur = thread_current(); 		// thread L 
+	struct list *cur_don = &cur->donations;
+	struct list_elem *e; 
 
-	struct list_elem *e;
-	for(e = list_begin(&dn); e != list_end(&dn); e = list_next(e))
-	{
-		struct thread *t = list_entry(e, struct thread, donation_elem);
-		if (t->wait_on_lock == lock)
-			list_remove(&t->donation_elem);
+	if (!list_empty(cur_don)){
+		for (e = list_begin(cur_don); e != list_end(cur_don); e = list_next(e)){
+			struct thread *e_cur = list_entry(e, struct thread, donation_elem);
+			if (lock == e_cur->wait_on_lock){
+				list_remove(&e_cur->donation_elem);
+			}
+		}
 	}
+
+	// struct list dn = thread_current()->donations;
+	// struct list_elem *start = list_begin(&dn);
+
+
+	// struct list_elem *e;
+	// for(e = list_begin(&dn); e != list_end(&dn); e = list_next(e))
+	// {
+	// 	struct thread *t = list_entry(e, struct thread, donation_elem);
+	// 	if (t->wait_on_lock == lock)
+	// 		list_remove(&t->donation_elem);
+	// }
 
 
 	// if (list_empty(&dn)) return;
@@ -691,14 +705,14 @@ void refresh_priority(void)
 
 	if (list_empty(dn))
 		return;
-	else {
-		list_sort(dn, thread_compare_donate_priority, 0);
-		struct thread *front = list_entry(list_begin(dn), struct thread, donation_elem);
-		if (front->priority > thread_current()->priority)
-		{
-			thread_current()->priority = front->priority;
-		}
+
+	list_sort(dn, thread_compare_donate_priority, 0);
+	struct thread *front = list_entry(list_begin(dn), struct thread, donation_elem);
+	if (front->priority > thread_current()->priority)
+	{
+		thread_current()->priority = front->priority;
 	}
+	
 
 
 	// while(traverse != list_tail(dn))
