@@ -50,8 +50,11 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	/* 첫번째 공백 전까지의 문자열 파싱 */
+	printf("\nfile_name : %s\n", file_name);
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -168,6 +171,8 @@ process_exec (void *f_name) {
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
+	/* 실행 중인 프로세스의 레지스터 정보, 스택 포인터, instruction count를
+	 * 저장하는 자료구조 */ 
 	struct intr_frame _if;
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
@@ -185,7 +190,7 @@ process_exec (void *f_name) {
 		return -1;
 
 	/* Start switched process. */
-	do_iret (&_if);
+	do_iret (&_if);	// ??????? 분석은 나중에
 	NOT_REACHED ();
 }
 
@@ -201,6 +206,15 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
+	int i = 0;
+	while(i < 100000000)
+	{
+		i++;
+	}
+	// while(1)
+	// {
+
+	// }
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
@@ -330,19 +344,46 @@ load (const char *file_name, struct intr_frame *if_) {
 	int i;
 
 	/* Allocate and activate page directory. */
-	t->pml4 = pml4_create ();
+	t->pml4 = pml4_create ();	// 페이지 디렉토리 생성
 	if (t->pml4 == NULL)
 		goto done;
-	process_activate (thread_current ());
+
+	// 레지스터 값을 실행 중인 스레드의 페이지 테이블 주소로 변경
+	process_activate (thread_current ());	// 페이지 테이블 활성화
+
+	// 파싱하기
+	//----------project2-userprogram-start--------------------------
+	/* Argument Parsing 구현*/
+	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 (strtok_r() 함수 이용) */
+	
+	char *arg[14];
+	int i = 0;
+	char *token, *save_ptr;
+
+	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+		token = strtok_r (NULL, " ", &save_ptr), i++)
+		*(arg + i) = token;
+
+	/* arg
+	0 - name
+	1 - 1st arg
+	2 - 2nd arg
+	...
+	*/
+
+	file_name = arg[0];
+
+	//----------project2-userprogram-end----------------------------
 
 	/* Open executable file. */
-	file = filesys_open (file_name);
+	file = filesys_open (file_name);	// 프로그램 파일 Open
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
 
 	/* Read and verify executable header. */
+	// ELF 파일의 헤더 정보를 읽어와서 &ehdr에 저장
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
 			|| ehdr.e_type != 2
@@ -355,6 +396,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Read program headers. */
+	// 버퍼(&ehdr)에서 배치 정보를 읽어와서 &phdr에 저장
 	file_ofs = ehdr.e_phoff;
 	for (i = 0; i < ehdr.e_phnum; i++) {
 		struct Phdr phdr;
@@ -397,6 +439,7 @@ load (const char *file_name, struct intr_frame *if_) {
 						read_bytes = 0;
 						zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
 					}
+					// 배치정보를 통해 파일을 메모리에 적재
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
 						goto done;
@@ -408,6 +451,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Set up stack. */
+	// 스택을 초기화
 	if (!setup_stack (if_))
 		goto done;
 
@@ -416,11 +460,24 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	
+	char *ptr = USER_STACK;
+	
+	// ptr + ??? = arg[0]
+	// for (int j=0; j<=i; j++)
+	// {
+	// 	ptr + ??? = arg[j];
+	// }
+
+	
+	
+	printf("\nsuccess-filename: %s\n\n", file_name);
 
 	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
+	printf("\nfail-filename: %s\n\n", file_name);
 	file_close (file);
 	return success;
 }

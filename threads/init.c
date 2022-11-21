@@ -74,7 +74,10 @@ main (void) {
 	bss_init ();
 
 	/* Break command line into arguments and parse options. */
-	argv = read_command_line ();
+	// 명령어를 개행으로 잘라서 argv에 저장함 (최대 65개 명령까지)
+	argv = read_command_line ();	
+
+	// returns the first non-option argument
 	argv = parse_options (argv);
 
 	/* Initialize ourselves as a thread so we can use locks,
@@ -225,7 +228,7 @@ parse_options (char **argv) {
 		else if (!strcmp (name, "-ul"))
 			user_page_limit = atoi (value);
 		else if (!strcmp (name, "-threads-tests"))
-			thread_tests = true;
+			thread_tests = true;	// 추후 run_actions()에서 호출된 run_task()함수에서 사용됨
 #endif
 		else
 			PANIC ("unknown option `%s' (use -h for help)", name);
@@ -237,13 +240,13 @@ parse_options (char **argv) {
 /* Runs the task specified in ARGV[1]. */
 static void
 run_task (char **argv) {
-	const char *task = argv[1];
+	const char *task = argv[1];	// argv[1]에는 실행할 파일 이름이 들어가 있다 (ex. 'test.c')
 
 	printf ("Executing '%s':\n", task);
 #ifdef USERPROG
-	if (thread_tests){
+	if (thread_tests){	// USERPROG이고, 커맨드라인에 '-threads-tests'가 있으면 thread_tests가 true이다
 		run_test (task);
-	} else {
+	} else {	// 
 		process_wait (process_create_initd (task));
 	}
 #else
@@ -260,7 +263,7 @@ run_actions (char **argv) {
 	struct action {
 		char *name;                       /* Action name. */
 		int argc;                         /* # of args, including action name. */
-		void (*function) (char **argv);   /* Function to execute action. */
+		void (*function) (char **argv);   /* Function to execute action. */ // ????????????????????
 	};
 
 	/* Table of supported actions. */
