@@ -785,10 +785,10 @@ next_thread_to_run (void) {
 /* Use iretq to launch the thread */
 void
 do_iret (struct intr_frame *tf) {
-	__asm __volatile(
-			"movq %0, %%rsp\n"
-			"movq 0(%%rsp),%%r15\n"
-			"movq 8(%%rsp),%%r14\n"
+	__asm __volatile(	
+			"movq %0, %%rsp\n"				// 커널 스택이 끝나면 OS 레지스터 내용을 팝해서 유저 스택으로 넘겨줌
+			"movq 0(%%rsp),%%r15\n"			//	|
+			"movq 8(%%rsp),%%r14\n"			//  |
 			"movq 16(%%rsp),%%r13\n"
 			"movq 24(%%rsp),%%r12\n"
 			"movq 32(%%rsp),%%r11\n"
@@ -796,17 +796,17 @@ do_iret (struct intr_frame *tf) {
 			"movq 48(%%rsp),%%r9\n"
 			"movq 56(%%rsp),%%r8\n"
 			"movq 64(%%rsp),%%rsi\n"
-			"movq 72(%%rsp),%%rdi\n"
+			"movq 72(%%rsp),%%rdi\n"		//	|
 			"movq 80(%%rsp),%%rbp\n"
 			"movq 88(%%rsp),%%rdx\n"
 			"movq 96(%%rsp),%%rcx\n"
 			"movq 104(%%rsp),%%rbx\n"
 			"movq 112(%%rsp),%%rax\n"
 			"addq $120,%%rsp\n"
-			"movw 8(%%rsp),%%ds\n"
-			"movw (%%rsp),%%es\n"
-			"addq $32, %%rsp\n"
-			"iretq"
+			"movw 8(%%rsp),%%ds\n"			//	|
+			"movw (%%rsp),%%es\n"			//	|
+			"addq $32, %%rsp\n"				// 커널 스택이 끝나면 OS 레지스터 내용을 팝해서 유저 스택으로 넘겨줌
+			"iretq"							// 커널 스택이 끝나면 CPU 레지스터 내용을 팝해서 유저 스택으로 넘겨줌
 			: : "g" ((uint64_t) tf) : "memory");
 }
 

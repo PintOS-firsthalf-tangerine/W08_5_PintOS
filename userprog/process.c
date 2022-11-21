@@ -356,8 +356,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Argument Parsing 구현*/
 	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 (strtok_r() 함수 이용) */
 	
-	char *arg[14];
-	int i = 0;
+	char *arg[128];
+	i = 0;
 	char *token, *save_ptr;
 
 	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL;
@@ -461,15 +461,50 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	
-	char *ptr = USER_STACK;
-	
-	// ptr + ??? = arg[0]
-	// for (int j=0; j<=i; j++)
-	// {
-	// 	ptr + ??? = arg[j];
-	// }
+	char *s_ptr;
+	size_t str_l;
 
-	
+	s_ptr = USER_STACK;
+
+	str_l = 0;
+	const int temp_argc = i;
+	int lens = 0;
+
+	char* address_argv[128];
+
+	for(i--; i >= 0; i--)
+	{
+		str_l = strlen(arg +i);
+		lens += str_l;
+		s_ptr -= str_l;
+		address_argv[i] = s_ptr;
+		memcpy(s_ptr, arg + i, str_l);
+	}
+
+	// padding 확인 - 들어가는 값은 (uint8_t)0 
+	int padding = 8 - lens%8;
+	if (lens%8 != 0)
+	{
+		s_ptr -= padding;
+		memset(s_ptr, (uint8_t)0, padding);
+	}
+
+	// temp_argc 자리에다가 (void *)0 센티넬(널 포인터)
+	s_ptr -= 8;
+	memset(s_ptr, NULL, 8);
+
+	// temp_argc개수 만큼 주소들 넣어줌.
+	for (int j=temp_argc-1; j>=0; j--)
+	{
+		s_ptr -= 8;	
+		*s_ptr = address_argv[j];
+	}
+
+	// return address
+	s_ptr -= 8;
+	*s_ptr = NULL;
+
+	hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	
 	printf("\nsuccess-filename: %s\n\n", file_name);
 
