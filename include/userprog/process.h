@@ -11,4 +11,7 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+void argument_parsing(const char *file_name, char **argv, int *argc);
+void argument_stack(char **argv, int argc, void **rsp);
+
 #endif /* userprog/process.h */
