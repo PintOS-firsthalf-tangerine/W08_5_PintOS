@@ -338,7 +338,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * Returns true if successful, false otherwise. */
 static bool
 load (const char *file_name, struct intr_frame *if_) {
-	printf("start load----------------------------------------------------------\n");
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -367,7 +366,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		token = strtok_r (NULL, " ", &save_ptr), argc++)
 		{
 			arg[argc] = token;
-			printf("%d - %s, token : %s\n",argc,arg[argc], token);
+			// printf("%d - %s, token : %s\n",argc,arg[argc], token);
 		}
 
 	/* arg
@@ -378,7 +377,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	*/
 
 	file_name = arg[0];
-	printf("file_name : %s\n", file_name);
+	// printf("file_name : %s\n", file_name);
 
 	//----------project2-userprogram-end----------------------------
 
@@ -468,59 +467,58 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	
-	char *s_ptr;
+	// char *s_ptr;
 	size_t str_l;
 
-	s_ptr = USER_STACK;
+	// s_ptr = USER_STACK;
 
 	str_l = 0;
-	const int temp_argc = argc;
+	int temp_argc = argc - 1;
 	int lens = 0;
 
 	char* address_argv[128];
-	// printf("-----------------------------------------\n");
-	for(argc = temp_argc - 1; argc >= 0; argc--)
+	for(; temp_argc >= 0; temp_argc--)
 	{	
-		// printf("argc: %d | arg[argc] : %s\n", argc, arg[argc]);
-		str_l = strlen(arg[argc]) + 1;
+		str_l = strlen(arg[temp_argc]) + 1;
 		lens += str_l;
-		s_ptr -= str_l;
-		address_argv[argc] = s_ptr;
-		memcpy(s_ptr, arg[argc], str_l);
-		// printf("argc : %d | str_l : %d | arg[argc] : %s | s_ptr : %s\n", argc, str_l, arg[argc], s_ptr);
+		if_->rsp -= str_l;
+
+		address_argv[temp_argc] = if_->rsp;
+		memcpy(if_->rsp, arg[temp_argc], str_l);
 	}
-
-
-	// printf("-----------------------------------------\n");
 
 	// padding 확인 - 들어가는 값은 (uint8_t)0 
 	int padding = 8 - lens%8;
 	if (lens%8 != 0)
 	{
-		s_ptr -= padding;
-		memset(s_ptr, (uint8_t)0, padding);
+		if_->rsp -= padding;
+		memset(if_->rsp, (uint8_t)0, padding);
 	}
 
 	// temp_argc 자리에다가 (void *)0 센티넬(널 포인터)
-	s_ptr -= 8;
-	memset(s_ptr, NULL, 8);
+	if_->rsp -= 8;
+	memset(if_->rsp, NULL, 8);
 
 	// temp_argc개수 만큼 주소들 넣어줌.
-	for (int j=temp_argc-1; j>=0; j--)
+	printf("---------------insert_address--------------\n");
+	for (int j=argc-1; j>=0; j--)
 	{
-		s_ptr -= 8;	
+		if_->rsp -= 8;	
 
-		memcpy(s_ptr, address_argv[j], 8);
+		printf("%p - %p\n", if_->rsp, address_argv[j]);
+		if_->rsp = address_argv[j];
+		printf("%p - %p\n\n", if_->rsp, address_argv[j]);
+		// memcpy(if_->rsp, address_argv[j], 8);
 		// *s_ptr = address_argv[j];
-		printf("s_ptr : %p, *s_ptr : %p , address_argv[%d] %p\n", s_ptr, *s_ptr, j, address_argv[j]);
+		// printf("s_ptr : %p, *s_ptr : %p , address_argv[%d] %p\n", if_->rsp, *s_ptr, j, address_argv[j]);
 	}
 
 	// return address
-	s_ptr -= 8;
-	*s_ptr = NULL;
+	if_->rsp -= 8;
+	memset(if_->rsp, (void *)0, 8);
 
 	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
-	if_->rsp = s_ptr;
+	// if_->rsp = s_ptr;
 	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
