@@ -336,6 +336,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * Returns true if successful, false otherwise. */
 static bool
 load (const char *file_name, struct intr_frame *if_) {
+	printf("start load----------------------------------------------------------\n");
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -357,12 +358,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 (strtok_r() 함수 이용) */
 	
 	char *arg[128];
-	i = 0;
+	int argc = 0;
 	char *token, *save_ptr;
 
 	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL;
-		token = strtok_r (NULL, " ", &save_ptr), i++)
-		*(arg + i) = token;
+		token = strtok_r (NULL, " ", &save_ptr), argc++)
+		{
+			arg[argc] = token;
+			printf("%d - %s, token : %s\n",argc,arg[argc], token);
+		}
 
 	/* arg
 	0 - name
@@ -372,6 +376,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	*/
 
 	file_name = arg[0];
+	printf("file_name : %s\n", file_name);
 
 	//----------project2-userprogram-end----------------------------
 
@@ -467,19 +472,24 @@ load (const char *file_name, struct intr_frame *if_) {
 	s_ptr = USER_STACK;
 
 	str_l = 0;
-	const int temp_argc = i;
+	const int temp_argc = argc;
 	int lens = 0;
 
 	char* address_argv[128];
-
-	for(i--; i >= 0; i--)
-	{
-		str_l = strlen(arg +i);
+	// printf("-----------------------------------------\n");
+	for(argc = temp_argc - 1; argc >= 0; argc--)
+	{	
+		printf("argc: %d | arg[argc] : %s\n", argc, arg[argc]);
+		str_l = strlen(arg[argc]) + 1;
 		lens += str_l;
 		s_ptr -= str_l;
-		address_argv[i] = s_ptr;
-		memcpy(s_ptr, arg + i, str_l);
+		address_argv[argc] = s_ptr;
+		memcpy(s_ptr, arg[argc], str_l);
+		printf("argc : %d | str_l : %d | arg[argc] : %s | s_ptr : %s\n", argc, str_l, arg[argc], s_ptr);
 	}
+
+
+	// printf("-----------------------------------------\n");
 
 	// padding 확인 - 들어가는 값은 (uint8_t)0 
 	int padding = 8 - lens%8;
@@ -504,9 +514,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	s_ptr -= 8;
 	*s_ptr = NULL;
 
+	if_->rsp = s_ptr;
+
 	hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	
-	printf("\nsuccess-filename: %s\n\n", file_name);
+	printf("\nsuccess-filename: %s\n", file_name);
 
 	success = true;
 
