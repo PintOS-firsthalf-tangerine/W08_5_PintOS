@@ -355,31 +355,16 @@ load (const char *file_name, struct intr_frame *if_) {
 	// 레지스터 값을 실행 중인 스레드의 페이지 테이블 주소로 변경
 	process_activate (thread_current ());	// 페이지 테이블 활성화
 
-	// 파싱하기
 	//----------project2-userprogram-start--------------------------
-	/* Argument Parsing 구현*/
-	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 (strtok_r() 함수 이용) */
 	
+	/* 인자들을 띄어쓰기 기준으로 토큰화 및 토큰의 개수 계산 (strtok_r() 함수 이용) */
+
+	/* Argument Parsing 구현*/
 	char *arg[128];
 	int argc = 0;
-	char *token, *save_ptr;
-
-	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL;
-		token = strtok_r (NULL, " ", &save_ptr), argc++)
-		{
-			arg[argc] = token;
-			// printf("%d - %s, token : %s\n",argc,arg[argc], token);
-		}
-
-	/* arg
-	0 - name
-	1 - 1st arg
-	2 - 2nd arg
-	...
-	*/
+	argument_parsing(file_name, arg, &argc);
 
 	file_name = arg[0];
-	// printf("file_name : %s\n", file_name);
 
 	//----------project2-userprogram-end----------------------------
 
@@ -467,65 +452,13 @@ load (const char *file_name, struct intr_frame *if_) {
 	if_->rip = ehdr.e_entry;
 
 	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	
-	// char *s_ptr;
-	size_t str_l;
+	 * TODO: Implement argument passing (see project2/argument_passing.html). */	
 
-	// s_ptr = USER_STACK;
+	argument_stack(arg, argc, &if_->rsp);	// 아무거나 될 수 있는 자료형에 &if_->rsp(아무나의 주소)를 넣는다.
 
-	str_l = 0;
-	int temp_argc = argc - 1;
-	int lens = 0;
-
-	char* address_argv[128];
-	for(; temp_argc >= 0; temp_argc--)
-	{	
-		str_l = strlen(arg[temp_argc]) + 1;
-		lens += str_l;
-		if_->rsp -= str_l;
-
-		address_argv[temp_argc] = if_->rsp;
-		memcpy(if_->rsp, arg[temp_argc], str_l);
-	}
-
-	// padding 확인 - 들어가는 값은 (uint8_t)0 
-	int padding = 8 - lens%8;
-	if (lens%8 != 0)
-	{
-		if_->rsp -= padding;
-		memset(if_->rsp, (uint8_t)0, padding);
-	}
-
-	// temp_argc 자리에다가 (void *)0 센티넬(널 포인터)
-	if_->rsp -= 8;
-	memset(if_->rsp, NULL, 8);
-	int *temp_rsp;
-
-	// temp_argc개수 만큼 주소들 넣어줌.
-	printf("---------------insert_address--------------\n");
-	for (int j=argc-1; j>=0; j--)
-	{
-		if_->rsp -= 8;
-		temp_rsp = if_->rsp;
-		*temp_rsp = address_argv[j];
-		// if_->rsp = address_argv[j];
-		// printf("%p %p - %p\n\n", &if_->rsp, if_->rsp, address_argv[j]);
-		// memcpy(if_->rsp, address_argv[j], 8);
-		// *s_ptr = address_argv[j];
-		// printf("s_ptr : %p, *s_ptr : %p , address_argv[%d] %p\n", if_->rsp, *s_ptr, j, address_argv[j]);
-	}
-
-	// return address
-	if_->rsp -= 8;
-	memset(if_->rsp, NULL, 8);
-	printf("argc: %d\n", argc);
-	if_->R.rdi = argc;// argc
+	// 레지스터 R의 rdi, rsi에 각각 argc와 return address(fake address)를 넣는다.
+	if_->R.rdi = argc;	// argc
 	if_->R.rsi = if_->rsp + 8;
-
-	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
-	// if_->rsp = s_ptr;
-	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
@@ -536,6 +469,72 @@ done:
 	return success;
 }
 
+/*
+file_name을 파싱해서 argv에 넣어줌. 파싱 개수는 argc에 저장.
+*/
+void argument_parsing(const char *file_name, char **argv, int *argc)
+{	
+	char *token, *save_ptr;
+
+	/* argv
+	0 - name
+	1 - 1st arg
+	2 - 2nd arg
+	...
+	*/
+	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+		token = strtok_r (NULL, " ", &save_ptr), (*argc)++)
+			argv[*argc] = token;
+}
+
+/*
+parsing한 결과인 argv(프로그램명과 인자들)를 스택에 push한다.
+*/
+void argument_stack(char **argv, int argc, void **rsp)
+{
+	size_t str_l;
+
+	str_l = 0;
+	int temp_argc = argc - 1;
+	int lens = 0;
+
+	char* address_argv[128];
+	for(; temp_argc >= 0; temp_argc--)
+	{	
+		str_l = strlen(argv[temp_argc]) + 1;
+		lens += str_l;
+		*rsp -= str_l;
+
+		address_argv[temp_argc] = *rsp;
+		memcpy(*rsp, argv[temp_argc], str_l);
+	}
+
+	// padding 확인 - 들어가는 값은 (uint8_t)0 
+	int padding = 8 - lens%8;
+	if (lens%8 != 0)
+	{
+		*rsp -= padding;
+		memset(*rsp, (uint8_t)0, padding);
+	}
+
+	// temp_argc 자리에다가 (void *)0 센티넬(널 포인터)
+	*rsp -= 8;
+	memset(*rsp, NULL, 8);
+	int *temp_rsp;
+
+	// temp_argc개수 만큼 주소들 넣어줌.
+	for (int j=argc-1; j>=0; j--)
+	{
+		*rsp -= 8;
+		temp_rsp = *rsp;
+		*temp_rsp = address_argv[j];
+	}
+
+	// return address
+	*rsp -= 8;
+	memset(*rsp, NULL, 8);
+	printf("argc: %d\n", argc);
+}
 
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
