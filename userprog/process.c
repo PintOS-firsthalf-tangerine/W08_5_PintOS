@@ -55,6 +55,7 @@ process_create_initd (const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
+	printf("=====tid=%d\n", tid);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -183,6 +184,7 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -479,13 +481,13 @@ load (const char *file_name, struct intr_frame *if_) {
 	// printf("-----------------------------------------\n");
 	for(argc = temp_argc - 1; argc >= 0; argc--)
 	{	
-		printf("argc: %d | arg[argc] : %s\n", argc, arg[argc]);
+		// printf("argc: %d | arg[argc] : %s\n", argc, arg[argc]);
 		str_l = strlen(arg[argc]) + 1;
 		lens += str_l;
 		s_ptr -= str_l;
 		address_argv[argc] = s_ptr;
 		memcpy(s_ptr, arg[argc], str_l);
-		printf("argc : %d | str_l : %d | arg[argc] : %s | s_ptr : %s\n", argc, str_l, arg[argc], s_ptr);
+		// printf("argc : %d | str_l : %d | arg[argc] : %s | s_ptr : %s\n", argc, str_l, arg[argc], s_ptr);
 	}
 
 
@@ -507,24 +509,29 @@ load (const char *file_name, struct intr_frame *if_) {
 	for (int j=temp_argc-1; j>=0; j--)
 	{
 		s_ptr -= 8;	
-		*s_ptr = address_argv[j];
+
+		memcpy(s_ptr, address_argv[j], 8);
+		// *s_ptr = address_argv[j];
+		printf("s_ptr : %p, *s_ptr : %p , address_argv[%d] %p\n", s_ptr, *s_ptr, j, address_argv[j]);
 	}
 
 	// return address
 	s_ptr -= 8;
 	*s_ptr = NULL;
 
+	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 	if_->rsp = s_ptr;
+	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 
-	hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
+	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	
-	printf("\nsuccess-filename: %s\n", file_name);
+	// printf("\nsuccess-filename: %s\n", file_name);
 
 	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	printf("\nfail-filename: %s\n\n", file_name);
+	// printf("\nfail-filename: %s\n\n", file_name);
 	file_close (file);
 	return success;
 }
