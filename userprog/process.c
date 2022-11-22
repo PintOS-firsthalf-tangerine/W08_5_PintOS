@@ -208,11 +208,13 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
-	int i = 0;
-	while(i < 100000000)
-	{
-		i++;
-	}
+	// int i = 0;
+	// while(i < 100000000)
+	// {
+	// 	i++;
+	// }
+
+	thread_set_priority(3);
 	// while(1)
 	// {
 
@@ -517,6 +519,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	// return address
 	if_->rsp -= 8;
 	memset(if_->rsp, NULL, 8);
+	printf("argc: %d\n", argc);
+	if_->R.rdi = argc;// argc
+	if_->R.rsi = if_->rsp + 8;
 
 	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 	// if_->rsp = s_ptr;
