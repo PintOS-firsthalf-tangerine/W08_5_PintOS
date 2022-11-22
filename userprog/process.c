@@ -498,16 +498,17 @@ load (const char *file_name, struct intr_frame *if_) {
 	// temp_argc 자리에다가 (void *)0 센티넬(널 포인터)
 	if_->rsp -= 8;
 	memset(if_->rsp, NULL, 8);
+	int *temp_rsp;
 
 	// temp_argc개수 만큼 주소들 넣어줌.
 	printf("---------------insert_address--------------\n");
 	for (int j=argc-1; j>=0; j--)
 	{
-		if_->rsp -= 8;	
-
-		printf("%p - %p\n", if_->rsp, address_argv[j]);
-		if_->rsp = address_argv[j];
-		printf("%p - %p\n\n", if_->rsp, address_argv[j]);
+		if_->rsp -= 8;
+		temp_rsp = if_->rsp;
+		*temp_rsp = address_argv[j];
+		// if_->rsp = address_argv[j];
+		// printf("%p %p - %p\n\n", &if_->rsp, if_->rsp, address_argv[j]);
 		// memcpy(if_->rsp, address_argv[j], 8);
 		// *s_ptr = address_argv[j];
 		// printf("s_ptr : %p, *s_ptr : %p , address_argv[%d] %p\n", if_->rsp, *s_ptr, j, address_argv[j]);
@@ -515,21 +516,17 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	// return address
 	if_->rsp -= 8;
-	memset(if_->rsp, (void *)0, 8);
+	memset(if_->rsp, NULL, 8);
 
 	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 	// if_->rsp = s_ptr;
 	// printf("if_->rsp : %p, s_ptr : %p\n", if_->rsp, s_ptr);
 
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
-	
-	// printf("\nsuccess-filename: %s\n", file_name);
-
 	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	// printf("\nfail-filename: %s\n\n", file_name);
 	file_close (file);
 	return success;
 }
