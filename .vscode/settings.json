@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "*.inc": "c"
+        "*.inc": "c",
+        "main.h": "c",
+        "lib.h": "c",
+        "stdbool.h": "c"
     }
 }

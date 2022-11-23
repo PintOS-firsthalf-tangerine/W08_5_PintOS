@@ -51,11 +51,11 @@ process_create_initd (const char *file_name) {
 	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* 첫번째 공백 전까지의 문자열 파싱 */
-	printf("\nfile_name : %s\n", file_name);
+	// printf("\nfile_name : %s\n", file_name);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
-	printf("=====tid=%d\n", tid);
+	// printf("=====tid=%d\n", tid);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -184,7 +184,7 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -462,7 +462,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	// 레지스터 R의 rdi, rsi에 각각 argc와 return address(fake address)를 넣는다.
 	if_->R.rdi = argc;	// argc
 	if_->R.rsi = if_->rsp + 8;
-
+	// printf("if_->R.rdi %d\n", if_->R.rdi);
+	// printf("if_->R.rsi %p\n", if_->R.rsi);
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
 
@@ -536,7 +537,7 @@ void argument_stack(char **argv, int argc, void **rsp)
 	// return address
 	*rsp -= 8;
 	memset(*rsp, NULL, 8);
-	printf("argc: %d\n", argc);
+	// printf("argc: %d\n", argc);
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in
