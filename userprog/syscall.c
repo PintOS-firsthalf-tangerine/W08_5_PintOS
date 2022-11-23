@@ -48,8 +48,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// printf ("system call!\n");
 	// thread_exit ();
 
-	void* ret_val;
-	
+	// void* ret_val;
+	int syscall_number = f->R.rax;
+	// printf("syscall number: %d\n", syscall_number);
 	// Make system call handler call system call using system call number
 	switch (f->R.rax)
 	{
@@ -59,7 +60,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_EXIT:
 			exit(f->R.rdi);
 			break;
-		case 10:
+		case SYS_WRITE:
 			write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 	}
@@ -69,10 +70,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	check_address(f->rsp);
 
 	// Copy arguments on the user stack to the kernel.
-	get_argument(f->rsp, f->R.rsi, f->R.rdi);
+	// get_argument(f->rsp, f->R.rsi, f->R.rdi);
 
 	// Save return value of system call at rax register.
-	f->R.rax;
+	// f->R.rax;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
@@ -83,14 +84,20 @@ int write(int fd, const void *buffer, unsigned size) {
 }
 
 void check_address(void *addr) {
-	if (addr == NULL)	//Null 포인터가 아니어야 함
+	if (addr == NULL){	//Null 포인터가 아니어야 함
+		printf("=======check1\n");
 		exit(-1);
+	}
 		
-	if (is_kernel_vaddr(addr)) // 커널 가상 주소 공간에 대한 포인터가 아니어야 함
+	if (!is_user_vaddr(addr)) { // 커널 가상 주소 공간에 대한 포인터가 아니어야 함
+		printf("=======check2\n");
 		exit(-1);
+	}
 
-	if(pml4_get_page(thread_current()->pml4, addr)) // 매핑되지 않은 가상 메모리에 대한 포인터가 아니어야 함
+	if(pml4_get_page(thread_current()->pml4, addr ) == NULL) {// 매핑되지 않은 가상 메모리에 대한 포인터가 아니어야 함
+		printf("=======check3\n");
 		exit(-1);
+	}
 } 
 
 void get_argument(void *rsp, int *argv, int argc) {
@@ -125,7 +132,8 @@ void exit(int status) {
 	printf("%s: exit(%d)\n",thread_current()->name, status);
 	// Use void thread_exit(void)
 	thread_exit();
-	return -1;
+	
+
 	// It should print message “Name of process: exit(status)”.
 }
 
