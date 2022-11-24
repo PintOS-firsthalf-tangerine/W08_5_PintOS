@@ -80,6 +80,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_OPEN:
 			f->R.rax = open(f->R.rdi);
 			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 	}
 
 	// Check validation of the pointers in the parameter list.
@@ -194,4 +199,31 @@ int open (const char *file){
 	}
 
 	return fd;
+}
+
+int filesize (int fd){
+	// 파일의 길이를 반환
+	if(!(2 <= fd && fd < 64))
+		return 0;
+	struct file *curr_file = thread_current()->fdt[fd];
+	check_address(curr_file);
+
+	printf("file_length: %d\n", file_length(thread_current()->fdt[fd]));
+	return file_length(thread_current()->fdt[fd]);
+}
+
+int read (int fd, void *buffer, unsigned size){
+	if (fd == 0){
+		while(1){
+			input_getc();
+		} 
+	}
+	else if(2 <= fd < 64){
+		struct file *curr_file = thread_current()->fdt[fd];
+		check_address(curr_file);
+		return file_read(curr_file, buffer, size);
+	}
+	else {
+		return -1;
+	}
 }
