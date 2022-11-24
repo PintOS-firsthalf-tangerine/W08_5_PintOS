@@ -48,8 +48,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// printf ("system call!\n");
 	// thread_exit ();
 
-	// void* ret_val;
-	int syscall_number = f->R.rax;
 	// printf("syscall number: %d\n", syscall_number);
 	// Make system call handler call system call using system call number
 	switch (f->R.rax)
@@ -61,7 +59,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_WRITE:
-			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 	}
 
