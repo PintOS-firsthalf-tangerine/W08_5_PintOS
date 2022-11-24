@@ -49,7 +49,6 @@ syscall_init (void) {
 	 * mode stack. Therefore, we masked the FLAG_FL. */
 	write_msr(MSR_SYSCALL_MASK,
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-	
 	lock_init(&filesys_lock);
 }
 
@@ -58,7 +57,6 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-
 	// Make system call handler call system call using system call number
 	switch (f->R.rax)
 	{
@@ -85,6 +83,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_READ:
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
 	}
 
 	// Check validation of the pointers in the parameter list.
@@ -141,6 +140,7 @@ void check_address(void *addr) {
 // 	}
 // }
 
+
 // Shutdown pintos
 void halt() {
 	power_off();
@@ -166,6 +166,14 @@ int wait(pid_t pid) {
 
 }
 
+bool remove (const char *file) {
+	// 파일을 삭제하는 시스템 콜 
+	// file:제거할 파일의이름및경로정보 
+	// 성공 일 경우 true, 실패 일 경우 false 리턴
+	check_address(file);
+	return filesys_remove(file);
+}
+
 bool create (const char *file, unsigned initial_size) {
 	// 파일을 생성하는 시스템 콜
 	// 성공 일 경우 true, 실패 일 경우 false 리턴 
@@ -174,14 +182,6 @@ bool create (const char *file, unsigned initial_size) {
 	check_address(file);
 
 	return filesys_create(file, initial_size);
-}
-
-bool remove (const char *file) {
-	// 파일을 삭제하는 시스템 콜 
-	// file:제거할 파일의이름및경로정보 
-	// 성공 일 경우 true, 실패 일 경우 false 리턴
-	check_address(file);
-	return filesys_remove(file);
 }
 
 int open (const char *file){

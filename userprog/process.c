@@ -52,7 +52,7 @@ process_create_initd (const char *file_name) {
 
 	/* 첫번째 공백 전까지의 문자열 파싱 */
 	char *parsed_file_name, *save_ptr;
-    parsed_file_name = strtok_r (file_name, " ", &save_ptr);
+	parsed_file_name = strtok_r (file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
