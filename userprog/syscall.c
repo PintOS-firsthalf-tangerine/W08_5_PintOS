@@ -186,13 +186,15 @@ bool remove (const char *file) {
 
 int open (const char *file){
 	check_address(file);
+	struct file *open_file;
 
 	int fd = -1;	// fd값을 -1로 초기화 -> open이 안되면 -1을 반환해야 함
 
-	if (filesys_open(file)) {	// open이 되면 if문 들어감
+	if ((open_file = filesys_open(file)) != NULL) {	// open이 되면 if문 들어감
 
 		lock_acquire(&filesys_lock);	// filesys_lock을 획득
 		fd = thread_current()->next_fd++;	// next_fd를 반환하도록 하고, 다음 fd를 위해 1을 더해줌
+		thread_current()->fdt[fd] = open_file;	// fdt[fd]에 file 넣기
 		if (fd >= 64)					// fd의 max 크기가 64임
 			fd = -1;
 		lock_release(&filesys_lock);	// filesys_lock release
@@ -202,25 +204,43 @@ int open (const char *file){
 }
 
 int filesize (int fd){
+	// printf("======filesize들어옴, fd: %d\n", fd);
 	// 파일의 길이를 반환
 	if(!(2 <= fd && fd < 64))
-		return 0;
+		return -1;
+	// printf("==thread_current()->next_fd: %d\n", thread_current()->next_fd);
 	struct file *curr_file = thread_current()->fdt[fd];
-	check_address(curr_file);
+	if (curr_file == NULL)
+			return -1;
 
-	printf("file_length: %d\n", file_length(thread_current()->fdt[fd]));
+	// printf("file_length: %d\n", file_length(thread_current()->fdt[fd]));
 	return file_length(thread_current()->fdt[fd]);
 }
 
 int read (int fd, void *buffer, unsigned size){
 	if (fd == 0){
-		while(1){
-			input_getc();
+		int cnt = 0;
+		while(1){	// size만큼 받았거나, '\n'이 오면 끝
+			if (cnt >= size) {	// size만큼 받은 경우
+					break;
+			}
+			cnt++;
+
+			char key = input_getc();
+			if (key == '\n') {	// '\n'이 온 경우
+				char *buffer = key;
+				break;
+			}
+		
+			char *buffer = key;
+			buffer++; 
 		} 
 	}
 	else if(2 <= fd < 64){
 		struct file *curr_file = thread_current()->fdt[fd];
-		check_address(curr_file);
+		if (curr_file == NULL)
+			return -1;
+		
 		return file_read(curr_file, buffer, size);
 	}
 	else {
