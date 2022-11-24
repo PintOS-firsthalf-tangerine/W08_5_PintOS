@@ -53,7 +53,6 @@ run_test (const char *name)
       {
         test_name = name;
         msg ("begin");
-        printf("\n==========run_test\n");
         t->function ();
         msg ("end");
         return;
