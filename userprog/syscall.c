@@ -212,7 +212,6 @@ int open (const char *file){
 	return fd;
 }
 
-// exec 만들고나서 하기 - filesize, read 둘다
 int filesize (int fd){
 	// 파일의 길이를 반환
 	if(!(2 <= fd && fd < 64))
@@ -225,15 +224,18 @@ int filesize (int fd){
 }
 
 int read (int fd, void *buffer, unsigned size){
+
 	if (fd == 0){
 		while(1){
 			input_getc();
 		} 
 	}
-	else if(fd == 1){
-		return -1;
+	else if(2 <= fd < 64){
+		struct file *curr_file = thread_current()->fdt[fd];
+		check_address(curr_file);
+		return file_read(curr_file, buffer, size);
 	}
 	else {
-		return file_read(thread_current()->fdt[fd], buffer, size);
+		return -1;
 	}
 }
