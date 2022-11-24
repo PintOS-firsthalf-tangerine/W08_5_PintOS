@@ -112,6 +112,11 @@ struct thread {
 
 	//--------------project1_3-priority_donation-end-----------------
 
+	//--------------project2-system_call-start---------------
+	struct file *fdt[64]; 
+	int next_fd;
+	//--------------project2-system_call-end-----------------
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

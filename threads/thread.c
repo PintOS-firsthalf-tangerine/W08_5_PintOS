@@ -764,7 +764,14 @@ init_thread (struct thread *t, const char *name, int priority) {
 	list_init(&t->donations);		
 	// donation_elem 을 초기화 하지 않는 이유 : 값이 들어가기 전까지 절대 사용되지 않으므로 할 필요 없다.
 	//--------------project1-alarm-end----------------
-}
+
+	//--------------project2-system_call-start----------------
+	t->next_fd = 2;
+	t->fdt[0] = 0;	// stdin
+	t->fdt[1] = 1;	// stdout
+	//--------------project2-system_call-end------------------
+
+}	
 
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
