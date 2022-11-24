@@ -45,12 +45,7 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	// printf ("system call!\n");
-	// thread_exit ();
 
-	// void* ret_val;
-	int syscall_number = f->R.rax;
-	// printf("syscall number: %d\n", syscall_number);
 	// Make system call handler call system call using system call number
 	switch (f->R.rax)
 	{
@@ -61,7 +56,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_WRITE:
-			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 	}
 
@@ -73,7 +68,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// get_argument(f->rsp, f->R.rsi, f->R.rdi);
 
 	// Save return value of system call at rax register.
-	// f->R.rax;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
@@ -132,7 +126,6 @@ void exit(int status) {
 	printf("%s: exit(%d)\n",thread_current()->name, status);
 	// Use void thread_exit(void)
 	thread_exit();
-	
 
 	// It should print message “Name of process: exit(status)”.
 }
@@ -147,4 +140,6 @@ int wait(pid_t pid) {
 	
 }
 
-void create();
+void create() {
+	
+}
