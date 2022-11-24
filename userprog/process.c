@@ -95,24 +95,42 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	void *newpage;
 	bool writable;
 
+	//--------------project2-system_call-start---------------
+
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
+	if (is_kernel_vaddr(va))	// 
+		return false;			//	
 
 	/* 2. Resolve VA from the parent's page map level 4. */
-	parent_page = pml4_get_page (parent->pml4, va);
+	if((parent_page = pml4_get_page (parent->pml4, va)) == NULL){
 
+		return false;
+	}
+	
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
+	int newpage_size = palloc_init();	// 반환값 있음, 일단 넘어간다 ?????
+	if((newpage = palloc_get_page(PAL_USER)) == NULL){
+
+		return false;
+	}
+
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
+	memcpy(newpage, parent_page, newpage_size);	// duplicate parent's page
+	writable = is_writable(pte); //
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+		return false;
 	}
 	return true;
+
+	//--------------project2-system_call-end-----------------
 }
 #endif
 
@@ -123,14 +141,28 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 static void
 __do_fork (void *aux) {
 	struct intr_frame if_;
-	struct thread *parent = (struct thread *) aux;
-	struct thread *current = thread_current ();
+	struct thread *parent = (struct thread *) aux;	// 바뀌기 전 - A 스레드
+	struct thread *current = thread_current ();		// 바뀐 후 - B 스레드
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
 	bool succ = true;
 
+	//--------------project2-system_call-start---------------
+
+	// clone the value of the "calle-saved" registers
+	parent_if->R.rbx = parent->tf.R.rbx;
+	parent_if->rsp = parent->tf.rsp;
+	parent_if->R.rbp = parent->tf.R.rbp;
+	parent_if->R.r12 = parent->tf.R.r12;
+	parent_if->R.r13 = parent->tf.R.r13;
+	parent_if->R.r14 = parent->tf.R.r14;
+	parent_if->R.r15 = parent->tf.R.r15;
+	
+	//--------------project2-system_call-end-----------------
+
 	/* 1. Read the cpu context to local stack. */
-	memcpy (&if_, parent_if, sizeof (struct intr_frame));
+	// cpu context: parent_if, local stack: &if_
+	memcpy (&if_, parent_if, sizeof (struct intr_frame));	
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();
@@ -152,6 +184,13 @@ __do_fork (void *aux) {
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
+	
+	// wait 구현 아직 안 했음 ------------------------------------???????
+	int fd_int;
+	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
+	{
+		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
+	}
 
 	process_init ();
 

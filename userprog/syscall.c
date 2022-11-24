@@ -23,6 +23,7 @@ bool remove (const char *file);
 int open (const char *file);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
+pid_t fork (const char *thread_name);
 
 
 /* System call.
@@ -71,6 +72,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_EXIT:
 			exit(f->R.rdi);
+			break;
+		case SYS_FORK:
+			fork (f->R.rdi);
 			break;
 		case SYS_EXEC:
 			// exec();
@@ -164,6 +168,10 @@ void exit(int status) {
 	
 
 	// It should print message “Name of process: exit(status)”.
+}
+
+pid_t fork (const char *thread_name){
+	return process_fork(thread_name, thread_current()->tf);
 }
 
 int exec(const char *cmd_line) {
