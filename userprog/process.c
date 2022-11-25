@@ -79,17 +79,32 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+process_fork (const char *name, struct intr_frame *if_ UNUSED) {	
+	// child 스레드를 만들어 놓고, 이 스레드가 CPU를 할당받으면 
+	// kernel_thread()함수 안에 있는 __do_fork를 통해 fork를 진행하도록 세팅해주는 함수이다. 
 	/* Clone current thread to new thread.*/
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
+
+	// 부모의 자식들리스트에 자식을 추가
+	
+	tid_t child_tid;
+
+	child_tid = thread_create (name,
+			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
+	
+	// child_tid를 이용해서 자식 스레드 찾기 -> parent의 자식들리스트에 넣기
+
+
+	return child_tid;
 }
 
 #ifndef VM
 /* Duplicate the parent's address space by passing this function to the
  * pml4_for_each. This is only for the project 2. */
+/* 부모 스레드의 주소 공간(페이지)을 새로 만든 공간(페이지)에 그대로 복제
+*/
 static bool
-duplicate_pte (uint64_t *pte, void *va, void *aux) {
+duplicate_pte (uint64_t *pte, void *va, void *aux) {	// pte-> parent의 pte, va->새로만든주소, aux->parent
 	struct thread *current = thread_current ();
 	struct thread *parent = (struct thread *) aux;
 	void *parent_page;
@@ -111,7 +126,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
 	int newpage_size = palloc_init();	// 반환값 있음, 일단 넘어간다 ?????
-	if((newpage = palloc_get_page(PAL_USER)) == NULL){
+	if((newpage = palloc_get_page(PAL_USER || PAL_ZERO)) == NULL){	// 왜 PAL_ZERO 넣어야하지?????
 
 		return false;
 	}
@@ -137,24 +152,26 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
  *       That is, you are required to pass second argument of process_fork to
  *       this function. */
 static void
-__do_fork (void *aux) {
+__do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 함수를 실행하고, 종료된다
 	struct intr_frame if_;
-	struct thread *parent = (struct thread *) aux;	//	바뀌기 전 스레드 - A
-	struct thread *current = thread_current ();		//	바뀐 후 스레드 - B
+	struct thread *parent = (struct thread *) aux;	//	부모 스레드(USER)
+	struct thread *current = thread_current ();		//	자식 스레드(현재 스레드)(USER)
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
 	bool succ = true;
 
 	//--------------project2-system_call-start---------------
+	parent_if = &(parent->tf);
+	parent_if->R.rax = 0;
 
-	// clone the value of the "calle-saved" registers
-	parent_if->R.rbx = parent->tf.R.rbx;
-	parent_if->rsp = parent->tf.rsp;
-	parent_if->R.rbp = parent->tf.R.rbp;
-	parent_if->R.r12 = parent->tf.R.r12;
-	parent_if->R.r13 = parent->tf.R.r13;
-	parent_if->R.r14 = parent->tf.R.r14;
-	parent_if->R.r15 = parent->tf.R.r15;
+	// // clone the value of the "calle-saved" registers
+	// parent_if->R.rbx = parent->tf.R.rbx;
+	// parent_if->rsp = parent->tf.rsp;
+	// parent_if->R.rbp = parent->tf.R.rbp;
+	// parent_if->R.r12 = parent->tf.R.r12;
+	// parent_if->R.r13 = parent->tf.R.r13;
+	// parent_if->R.r14 = parent->tf.R.r14;
+	// parent_if->R.r15 = parent->tf.R.r15;
 	
 	//--------------project2-system_call-end-----------------
 
@@ -163,38 +180,50 @@ __do_fork (void *aux) {
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
 	/* 2. Duplicate PT */
-	current->pml4 = pml4_create();
+	current->pml4 = pml4_create();	// 자식 스레드의 pml4에 커널용 pml4를 넣어줌
 	if (current->pml4 == NULL)
 		goto error;
 
-	process_activate (current);
+	// (context switch를 위해) 커널용 pml4와 커널용 stack pointer를 자식 스레드(current)에 세팅해 줌
+	process_activate (current);	
+	
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
 	if (!supplemental_page_table_copy (&current->spt, &parent->spt))
 		goto error;
 #else
-	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
+	// duplicate_pte() 실행
+	//-> 부모 스레드의 주소 공간(페이지)을 새로 만든 공간(페이지)(자식용)에 그대로 복제
+	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))	
 		goto error;
 #endif
 
 	/* TODO: Your code goes here.
-	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
+	 * TODO: Hint) To duplicate the file object, use `file_duplicate`	-> file은 디스크에 있기 때문
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
+	// 자식이 부모를 복제해야하기 때문에 복제를 완료하기 전까지 부모를 살려둔다. 
+	// -> 부모는 세마 다운 함, 자식은 복제 다했으면 세마 업 함
 
-	// wait 구현 아직 안 했음 ------------------------------------???????
+	// 부모는 세마 다운 된 상태로 기다리고 있음
+	// 부모 기다리는 기능 구현 아직 안 했음 ------------------------------------???
+	
+
+	// 부모와 연결된 파일들을 자식하고도 연결시킴
 	int fd_int;
 	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
 
-	process_init ();
+	// 자식 프로세스를 초기화?
+	process_init ();	// 없어도 됨
 
-	/* Finally, switch to the newly created process. */
+	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
 		do_iret (&if_);
+	
 error:
 	thread_exit ();
 }
@@ -304,8 +333,10 @@ process_cleanup (void) {
 	}
 }
 
-/* Sets up the CPU for running user code in the nest thread.
+/* Sets up the CPU for running user code in the next thread.
  * This function is called on every context switch. */
+/* (context switch를 위해) 커널용 pml4와 커널용 stack pointer를 세팅해 줌
+*/
 void
 process_activate (struct thread *next) {
 	/* Activate thread's page tables. */
