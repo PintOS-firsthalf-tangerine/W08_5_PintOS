@@ -18,6 +18,7 @@ void syscall_handler (struct intr_frame *);
 void check_address(void *addr);
 void halt (void);
 void exit (int status);
+pid_t fork (const char *thread_name);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int open (const char *file);
@@ -69,6 +70,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_EXIT:
 			exit(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi);
 			break;
 		case SYS_CREATE:
 			f->R.rax = create(f->R.rdi, f->R.rsi);
@@ -161,6 +165,11 @@ void exit(int status) {
 	thread_exit();
 
 	// It should print message “Name of process: exit(status)”.
+}
+
+pid_t fork (const char *thread_name) {
+	
+	return process_fork(thread_name, thread_current()->tf);
 }
 
 int exec(const char *cmd_line) {
