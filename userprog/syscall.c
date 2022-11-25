@@ -304,3 +304,4 @@ void close (int fd) {
 		thread_current()->fdt[fd] = NULL;
 	}
 }
+//
