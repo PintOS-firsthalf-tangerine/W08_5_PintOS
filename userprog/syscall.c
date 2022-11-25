@@ -10,7 +10,7 @@
 #include "include/filesys/filesys.h"
 #include "include/threads/synch.h"
 #include "include/filesys/file.h"
-#include "include/devices/input.h"
+#include "include/devices/input.h"	// 
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
