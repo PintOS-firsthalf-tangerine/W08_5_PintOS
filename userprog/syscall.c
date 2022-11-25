@@ -88,7 +88,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	}
 
 	// Check validation of the pointers in the parameter list.
-	// check_address()
 	check_address(f->rsp);
 
 	// Copy arguments on the user stack to the kernel.
