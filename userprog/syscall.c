@@ -91,7 +91,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	check_address(f->rsp);
 
 	// Copy arguments on the user stack to the kernel.
-	// get_argument(f->rsp, f->R.rsi, f->R.rdi);
 
 	// Save return value of system call at rax register.
 }
