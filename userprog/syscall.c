@@ -10,12 +10,12 @@
 #include "include/filesys/filesys.h"
 #include "include/threads/synch.h"
 #include "include/filesys/file.h"
-#include "include/devices/input.h"	// 
+#include "include/devices/input.h"	
+#include "include/lib/kernel/console.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void check_address(void *addr);
-int write(int fd, const void *buffer, unsigned size);
 void halt (void);
 void exit (int status);
 bool create (const char *file, unsigned initial_size);
@@ -23,6 +23,7 @@ bool remove (const char *file);
 int open (const char *file);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
+int write (int fd, const void *buffer, unsigned size);
 
 
 /* System call.
@@ -66,9 +67,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_EXIT:
 			exit(f->R.rdi);
 			break;
-		case SYS_WRITE:
-			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-			break;
 		case SYS_CREATE:
 			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
@@ -84,6 +82,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_READ:
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
 	}
 
 	// Check validation of the pointers in the parameter list.
@@ -94,13 +95,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// get_argument(f->rsp, f->R.rsi, f->R.rdi);
 
 	// Save return value of system call at rax register.
-}
-
-int write(int fd, const void *buffer, unsigned size) {
-	if (fd == 1) {
-		putbuf(buffer, size);
-		return size;
-	}
 }
 
 void check_address(void *addr) {
@@ -242,6 +236,23 @@ int read (int fd, void *buffer, unsigned size){
 			return -1;
 		
 		return file_read(curr_file, buffer, size);
+	}
+	else {
+		return -1;
+	}
+}
+
+int write(int fd, const void *buffer, unsigned size) {
+	if (fd == 1) {
+		putbuf(buffer, size);
+		return size;
+	}
+	else if (2 <= fd < 64) {
+		struct file *curr_file = thread_current()->fdt[fd];
+		if (curr_file == NULL)
+			return -1;
+		
+		return file_write(curr_file, buffer, size);
 	}
 	else {
 		return -1;
