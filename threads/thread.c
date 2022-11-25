@@ -312,7 +312,7 @@ thread_print_stats (void) {
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
-	struct thread *t;
+	struct thread *t;	// 자식 스레드 틀
 	tid_t tid;
 
 	ASSERT (function != NULL);
@@ -323,14 +323,14 @@ thread_create (const char *name, int priority,
 		return TID_ERROR;
 
 	/* Initialize thread. */
-	init_thread (t, name, priority);
+	init_thread (t, name, priority);	// 새로 만든 스레드(자식 스레드)
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
-	t->tf.rip = (uintptr_t) kernel_thread;
-	t->tf.R.rdi = (uint64_t) function;
-	t->tf.R.rsi = (uint64_t) aux;
+	t->tf.rip = (uintptr_t) kernel_thread;	// 이 함수에서 dofork() 실행 됨
+	t->tf.R.rdi = (uint64_t) function;	// __do_fork()
+	t->tf.R.rsi = (uint64_t) aux;		// thread_current() -> 부모가 될 스레드, process_fork()에서 호출됨
 	t->tf.ds = SEL_KDSEG;
 	t->tf.es = SEL_KDSEG;
 	t->tf.ss = SEL_KDSEG;
@@ -736,7 +736,7 @@ static void
 kernel_thread (thread_func *function, void *aux) {
 	ASSERT (function != NULL);
 
-	intr_enable ();       /* The scheduler runs with interrupts off. */
+	intr_enable ();       /* The scheduler runs with interrupts off. */	// do_fork에서 커널을 호출할 것으로 추정된다?????
 	function (aux);       /* Execute the thread function. */
 	thread_exit ();       /* If function() returns, kill the thread. */
 }
@@ -769,6 +769,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->next_fd = 2;
 	t->fdt[0] = 0;	// stdin
 	t->fdt[1] = 1;	// stdout
+
+	list_init(&t->child_list);	// 자식들 리스트 초기화 
 	//--------------project2-system_call-end------------------
 }	
 
@@ -948,7 +950,8 @@ schedule (void) {
 #ifdef USERPROG
 	/* Activate the new address space. */
 	//*******************************LATER**************************************************
-	process_activate (next);	// 추측: 프로세스 바뀌었으므로 메모리 공간 새로 할당 - 나중에 제대로 알아보기
+	process_activate (next);	// 커널이 돌아가기 위한 준비 
+	// 추: 프로세스 바뀌었으므로 메모리 공간 새로 할당 - 나중에 제대로 알아보기
 	//*******************************LATER**************************************************
 #endif
 	// 스레드가 2개 이상인 경우 if문 실행 

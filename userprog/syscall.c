@@ -1,34 +1,4 @@
 #include "userprog/syscall.h"
-#include <stdio.h>
-#include <syscall-nr.h>
-#include "threads/interrupt.h"
-#include "threads/thread.h"
-#include "threads/loader.h"
-#include "userprog/gdt.h"
-#include "threads/flags.h"
-#include "intrinsic.h"
-#include "include/filesys/filesys.h"
-#include "include/threads/synch.h"
-#include "include/filesys/file.h"
-#include "include/devices/input.h"	
-#include "include/lib/kernel/console.h"
-
-void syscall_entry (void);
-void syscall_handler (struct intr_frame *);
-void check_address(void *addr);
-void halt (void);
-void exit (int status);
-pid_t fork (const char *thread_name);
-bool create (const char *file, unsigned initial_size);
-bool remove (const char *file);
-int open (const char *file);
-int filesize (int fd);
-int read (int fd, void *buffer, unsigned size);
-int write (int fd, const void *buffer, unsigned size);
-void seek (int fd, unsigned position);
-unsigned tell (int fd);
-void close (int fd);
-
 
 /* System call.
  *
@@ -167,9 +137,20 @@ void exit(int status) {
 	// It should print message “Name of process: exit(status)”.
 }
 
-pid_t fork (const char *thread_name) {
+pid_t fork (const char *thread_name, struct intr_frame *if_) {
 	
-	return process_fork(thread_name, thread_current()->tf);
+	// 시스템콜이 받은 인자 if_ -> 즉, 커널 스택에 있는 if_를 받아온다
+	/*
+		- if
+		커널 스택에 있는 'if'는 같은 스레드(스레드A) 내에서 유저모드->커널모드 Context Switching이 일어날 때, 
+		유저모드가 사용하던 레지스터 정보를 저장한 곳이다. 
+
+		- tf
+		반대로 커널 영역의 Struct thread 내부에 있는 'tf'는 
+		다른 스레드와 Context Switching이 일어날 때(스레드A->스레드B) 
+		사용하던 레지스터 정보(유저모드, 커널모드 상관 없음)를 저장한 곳이다. 
+	*/
+	return process_fork(thread_name, if_);
 }
 
 int exec(const char *cmd_line) {
