@@ -11,7 +11,7 @@
 #include "include/threads/synch.h"
 #include "include/filesys/file.h"
 #include "include/devices/input.h"	
-#include "include/lib/kernel/console.h"	// 
+#include "include/lib/kernel/console.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -24,6 +24,9 @@ int open (const char *file);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
+void close (int fd);
 
 
 /* System call.
@@ -84,6 +87,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_WRITE:
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
 			break;
 	}
 
@@ -254,5 +266,39 @@ int write(int fd, const void *buffer, unsigned size) {
 	}
 	else {
 		return -1;
+	}
+}
+
+void seek (int fd, unsigned position) {
+	if (2 <= fd < 64) {
+		struct file *curr_file = thread_current()->fdt[fd];
+		if (curr_file == NULL)
+			return;
+
+		file_seek(curr_file, position);
+	}
+}
+
+unsigned tell (int fd) {
+	if (2 <= fd < 64) {
+		struct file *curr_file = thread_current()->fdt[fd];
+		if (curr_file == NULL)
+			return -1;
+		
+		return file_tell(curr_file);
+	}
+	else {
+		return -1;
+	}
+}
+
+void close (int fd) {
+	if (2 <= fd < 64) {
+		struct file *curr_file = thread_current()->fdt[fd];
+		if (curr_file == NULL)
+			return;
+
+		file_close(curr_file);
+		thread_current()->fdt[fd] = NULL;
 	}
 }
