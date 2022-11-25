@@ -11,7 +11,7 @@
 #include "include/threads/synch.h"
 #include "include/filesys/file.h"
 #include "include/devices/input.h"	
-#include "include/lib/kernel/console.h"
+#include "include/lib/kernel/console.h"	// 
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
