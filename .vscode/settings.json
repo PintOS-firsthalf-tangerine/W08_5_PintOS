@@ -4,6 +4,8 @@
         "main.h": "c",
         "lib.h": "c",
         "stdbool.h": "c",
-        "console.h": "c"
+        "console.h": "c",
+        "process.h": "c",
+        "syscall.h": "c"
     }
 }

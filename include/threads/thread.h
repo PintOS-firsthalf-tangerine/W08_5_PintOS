@@ -115,6 +115,16 @@ struct thread {
 	//--------------project2-system_call-start---------------
 	struct file *fdt[64];
 	int next_fd;
+
+	// 커널 스택에 있는 interrupt frame을 저장하기 위함
+	struct intr_frame if_;
+
+	// parent, child 만들어야 함!!
+	struct thread* parent;		// 부모
+	struct list child_list;		// 자식들 리스트
+	struct list_elem children;	// 자식들 리스트 안의 하나의 자식
+
+
 	//--------------project2-system_call-end-----------------
 
 

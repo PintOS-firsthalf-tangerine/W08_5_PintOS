@@ -92,6 +92,8 @@ pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {
  * virtual addresses, but none for user virtual addresses.
  * Returns the new page directory, or a null pointer if memory
  * allocation fails. */
+/* 커널 vm을 pm으로 바꿔주는 pml4 생성
+*/
 uint64_t *
 pml4_create (void) {
 	uint64_t *pml4 = palloc_get_page (0);
@@ -110,7 +112,7 @@ pt_for_each (uint64_t *pt, pte_for_each_func *func, void *aux,
 								 ((uint64_t) pdp_index << PDPESHIFT) |
 								 ((uint64_t) pdx_index << PDXSHIFT) |
 								 ((uint64_t) i << PTXSHIFT));
-			if (!func (pte, va, aux))
+			if (!func (pte, va, aux))	// func가 duplicate_pte(), pte->parent의 pte, aux->parent, va->새로만듦
 				return false;
 		}
 	}
