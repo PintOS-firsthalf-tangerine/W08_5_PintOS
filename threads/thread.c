@@ -28,9 +28,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* List of all processes. Processes are added to this list when they are first scheduled and removed when they exit. */
-static struct list all_list;
-
 static struct thread *idle_thread;
 
 //--------------project1-alarm-start--------------
@@ -231,6 +228,12 @@ thread_init (void) {
 
 	//--------------project1-alarm-end-----------------
 
+	//--------------project2-system_call-start---------------
+	// all list 초기화
+	list_init(&all_list);
+
+	//--------------project2-system_call-end-----------------
+
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -325,6 +328,24 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);	// 새로 만든 스레드(자식 스레드)
 	tid = t->tid = allocate_tid ();
+
+	// 자식스레드의 parent멤버에 부모스레드 저장
+	t->parent = thread_current();
+
+	/* 프로그램이 로드되지 않음 */
+	t->is_load = false;
+
+	/* 프로세스가 종료되지 않음 */
+	t->is_process_alive = true;
+
+	/* exit 세마포어 0으로 초기화 */ 
+	sema_init(&t->exit_sema, 0);
+	
+	/* load 세마포어 0으로 초기화 */
+	sema_init(&t->load_sema, 0);
+
+	// 부모스레드의 자식리스트에 t 추가
+	list_push_back(&thread_current()->child_list, &t->child_elem);
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -454,6 +475,7 @@ thread_exit (void) {
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
+	list_remove(&thread_current()->all_list_elem);
 	do_schedule (THREAD_DYING);
 	NOT_REACHED ();
 }
@@ -771,6 +793,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->fdt[1] = 1;	// stdout
 
 	list_init(&t->child_list);	// 자식들 리스트 초기화 
+	list_push_back(&all_list, &t->all_list_elem);	// all_list에 t 추가
 	//--------------project2-system_call-end------------------
 }	
 

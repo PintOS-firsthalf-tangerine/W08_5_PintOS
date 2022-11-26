@@ -95,12 +95,11 @@ struct thread {
 	//--------------project1-alarm-start--------------
 	// 깨어나야할 tick을 저장할 변수 추가
 	int64_t wakeup_tick;
-	
 
 	//--------------project1_1-alarm-end----------------
 
 	/* Shared between thread.c and synch.c. */
-	// thread.c에서는 run queue의 element로, synch.c에서는 semaphore wait list로 사용됨
+	// thread.c에서는 run queue의 element로, synch.c에서는 semaphore wait list로 사용됨, sleep list도 사용
 	struct list_elem elem;		/* List element. */ // 
 
 	//--------------project1_3-priority_donation-start---------------
@@ -122,8 +121,26 @@ struct thread {
 	// parent, child 만들어야 함!!
 	struct thread* parent;		// 부모
 	struct list child_list;		// 자식들 리스트
-	struct list_elem children;	// 자식들 리스트 안의 하나의 자식
+	struct list_elem child_elem;	// 자식들 리스트 안의 하나의 자식
 
+	struct list_elem all_list_elem;	// all_list에 들어갈 elem
+	struct intr_frame* parent_if_;	// fork할 때, 부모의 커널스택에 있는 interrupt frame을 저장
+									// -> 부모의 User모드 레지스터 정보
+
+	/* 프로세스의 프로그램 메모리 적재 유무 */ 
+	int is_load;
+
+	/* 프로세스가 종료 유무 확인 */
+	int is_process_alive;
+
+	/* exit 세마포어 */
+	struct semaphore exit_sema;
+
+	/* load 세마포어 */
+	struct semaphore load_sema;
+
+	/* exit 호출 시 종료 status */
+	int exit_status;	
 
 	//--------------project2-system_call-end-----------------
 
@@ -141,6 +158,9 @@ struct thread {
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 };
+
+/* List of all processes. Processes are added to this list when they are first scheduled and removed when they exit. */
+static struct list all_list;
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

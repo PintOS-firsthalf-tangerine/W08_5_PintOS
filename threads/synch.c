@@ -128,7 +128,7 @@ sema_try_down (struct semaphore *sema) {
    This function may be called from an interrupt handler. */
 /*
 waiters_list가 비어있지 않은 경우,
-waiters_list가 맨 처음 스레드를 unblock하여
+waiters_list의 맨 처음 스레드를 unblock하여
 ready_list에 넣고 READY 상태로 변경.
 */
 void
