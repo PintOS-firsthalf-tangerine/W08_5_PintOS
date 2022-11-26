@@ -161,6 +161,7 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 int wait(pid_t pid) {
 	// Wait for termination of child process whose process id is pid
 
+	return process_wait(pid);
 }
 
 int exec(const char *cmd_line) {

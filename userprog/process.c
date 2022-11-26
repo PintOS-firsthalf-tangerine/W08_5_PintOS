@@ -236,7 +236,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	// 부모는 세마 다운 된 상태로 기다리고 있음 -> 다른 곳에서 wait()로 부모가 기다리도록 함
 	
 	// 자식의 exit_sema를 세마 업
-	sema_up(current->exit_sema);
+	sema_up(&current->exit_sema);
 
 	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
