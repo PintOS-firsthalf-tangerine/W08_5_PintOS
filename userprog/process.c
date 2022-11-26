@@ -18,6 +18,7 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -91,25 +92,32 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
-	// child_tid를 이용해서 자식 스레드 찾기 
-	struct thread *curr = thread_current();
-	struct list_elem *temp_elem = list_begin(&all_list);
-	for(; temp_elem != list_tail(&all_list); temp_elem = temp_elem->next) {
-		struct thread *temp_thread = list_entry(temp_elem, struct thread, all_list_elem);
-		if (temp_thread->tid == child_tid) {
-			// parent의 child_list멤버에 자식 넣기
-			list_push_back(&curr->child_list, &temp_thread->child_elem);
-
-			// child의 parent멤버를 curr로 설정
-			temp_thread->parent = curr;
-
-			// child의 parent_if멤버에 인자로 받은 if_ 넣기
-			temp_thread->parent_if_ = if_;
-			break;
-		}
+	if (child_tid != TID_ERROR)
+	{
+		// child_tid를 이용해서 자식 스레드 찾기 
+		struct thread *child_thread = get_child_process(child_tid);
+		// child의 parent_if멤버에 인자로 받은 if_ 넣기
+		child_thread->parent_if_ = if_;
 	}
 
 	return child_tid;
+}
+
+struct thread *get_child_process(int pid) {
+	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */ 
+	struct thread *curr = thread_current();
+	struct list_elem *temp_elem = list_begin(&curr->child_list);
+	
+	for(; temp_elem != list_tail(&curr->child_list); temp_elem = temp_elem->next) {
+		struct thread *temp_thread = list_entry(temp_elem, struct thread, child_elem);
+		if (temp_thread->tid == pid) {
+			/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
+			return temp_thread;
+		}
+	}
+
+	/* 리스트에 존재하지 않으면 NULL 리턴 */
+	return NULL;
 }
 
 #ifndef VM
@@ -227,7 +235,8 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	// -> 부모는 세마 다운 함, 자식은 복제 다했으면 세마 업 함
 	// 부모는 세마 다운 된 상태로 기다리고 있음 -> 다른 곳에서 wait()로 부모가 기다리도록 함
 	
-	// 세마 업
+	// 자식의 exit_sema를 세마 업
+	sema_up(current->exit_sema);
 
 	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
@@ -286,23 +295,15 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
-	// int i = 0;
-	// while(i < 100000000)
-	// {
-	// 	i++;
-	// }
-
-	thread_set_priority(3);
-	// while(1)
-	// {
-
-	// }
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-	
+	// child_tid를 이용해서 자식 스레드 찾기 
+	struct thread *child_thread = get_child_process(child_tid);
 
+	// wait for child. sema down.
+	sema_down(&child_thread->exit_sema);
 
 	return -1;
 }
@@ -316,9 +317,10 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	// %s: full name passed to fork()
-	// no print when kernel thread that is not a user process terminates
+	// no print when kernel thread that is not a user process terminates // ??????
 	// printf("%s: exit(%d)\n", curr->name, );
 
+	sema_up(&curr->exit_sema);
 	process_cleanup ();
 }
 

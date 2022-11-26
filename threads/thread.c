@@ -329,6 +329,24 @@ thread_create (const char *name, int priority,
 	init_thread (t, name, priority);	// 새로 만든 스레드(자식 스레드)
 	tid = t->tid = allocate_tid ();
 
+	// 자식스레드의 parent멤버에 부모스레드 저장
+	t->parent = thread_current();
+
+	/* 프로그램이 로드되지 않음 */
+	t->is_load = false;
+
+	/* 프로세스가 종료되지 않음 */
+	t->is_process_alive = true;
+
+	/* exit 세마포어 0으로 초기화 */ 
+	sema_init(&t->exit_sema, 0);
+	
+	/* load 세마포어 0으로 초기화 */
+	sema_init(&t->load_sema, 0);
+
+	// 부모스레드의 자식리스트에 t 추가
+	list_push_back(&thread_current()->child_list, &t->child_elem);
+
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t) kernel_thread;	// 이 함수에서 dofork() 실행 됨
@@ -457,6 +475,7 @@ thread_exit (void) {
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
+	list_remove(&thread_current()->all_list_elem);
 	do_schedule (THREAD_DYING);
 	NOT_REACHED ();
 }

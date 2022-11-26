@@ -127,6 +127,21 @@ struct thread {
 	struct intr_frame* parent_if_;	// fork할 때, 부모의 커널스택에 있는 interrupt frame을 저장
 									// -> 부모의 User모드 레지스터 정보
 
+	/* 프로세스의 프로그램 메모리 적재 유무 */ 
+	int is_load;
+
+	/* 프로세스가 종료 유무 확인 */
+	int is_process_alive;
+
+	/* exit 세마포어 */
+	struct semaphore exit_sema;
+
+	/* load 세마포어 */
+	struct semaphore load_sema;
+
+	/* exit 호출 시 종료 status */
+	int exit_status;	
+
 	//--------------project2-system_call-end-----------------
 
 

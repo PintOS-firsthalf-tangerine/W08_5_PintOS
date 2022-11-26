@@ -134,6 +134,8 @@ void halt() {
 void exit(int status) {
 
 	printf("%s: exit(%d)\n",thread_current()->name, status);
+	thread_current()->exit_status = status;
+
 	// Use void thread_exit(void)
 	thread_exit();
 
@@ -158,7 +160,6 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 
 int wait(pid_t pid) {
 	// Wait for termination of child process whose process id is pid
-	
 
 }
 
