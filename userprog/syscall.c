@@ -42,7 +42,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
-			f->R.rax = fork(f->R.rdi);
+			f->R.rax = fork(f->R.rdi, f);
+			break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
 			f->R.rax = create(f->R.rdi, f->R.rsi);
@@ -153,13 +156,14 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 	return process_fork(thread_name, if_);
 }
 
-int exec(const char *cmd_line) {
-	// Create child process and execute program corresponds to cmd_line on it
-}
-
 int wait(pid_t pid) {
 	// Wait for termination of child process whose process id is pid
+	
 
+}
+
+int exec(const char *cmd_line) {
+	// Create child process and execute program corresponds to cmd_line on it
 }
 
 bool remove (const char *file) {

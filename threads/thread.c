@@ -28,9 +28,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* List of all processes. Processes are added to this list when they are first scheduled and removed when they exit. */
-static struct list all_list;
-
 static struct thread *idle_thread;
 
 //--------------project1-alarm-start--------------
@@ -230,6 +227,12 @@ thread_init (void) {
 	list_init (&sleep_list);
 
 	//--------------project1-alarm-end-----------------
+
+	//--------------project2-system_call-start---------------
+	// all list 초기화
+	list_init(&all_list);
+
+	//--------------project2-system_call-end-----------------
 
 	list_init (&destruction_req);
 
@@ -771,6 +774,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->fdt[1] = 1;	// stdout
 
 	list_init(&t->child_list);	// 자식들 리스트 초기화 
+	list_push_back(&all_list, &t->all_list_elem);	// all_list에 t 추가
 	//--------------project2-system_call-end------------------
 }	
 

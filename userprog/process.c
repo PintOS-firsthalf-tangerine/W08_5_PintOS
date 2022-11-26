@@ -83,17 +83,31 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// child 스레드를 만들어 놓고, 이 스레드가 CPU를 할당받으면 
 	// kernel_thread()함수 안에 있는 __do_fork를 통해 fork를 진행하도록 세팅해주는 함수이다. 
 	/* Clone current thread to new thread.*/
-	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 
-	// 부모의 자식들리스트에 자식을 추가
+	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
 	tid_t child_tid;
 
 	child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
-	// child_tid를 이용해서 자식 스레드 찾기 -> parent의 자식들리스트에 넣기
+	// child_tid를 이용해서 자식 스레드 찾기 
+	struct thread *curr = thread_current();
+	struct list_elem *temp_elem = list_begin(&all_list);
+	for(; temp_elem != list_tail(&all_list); temp_elem = temp_elem->next) {
+		struct thread *temp_thread = list_entry(temp_elem, struct thread, all_list_elem);
+		if (temp_thread->tid == child_tid) {
+			// parent의 child_list멤버에 자식 넣기
+			list_push_back(&curr->child_list, &temp_thread->child_elem);
 
+			// child의 parent멤버를 curr로 설정
+			temp_thread->parent = curr;
+
+			// child의 parent_if멤버에 인자로 받은 if_ 넣기
+			temp_thread->parent_if_ = if_;
+			break;
+		}
+	}
 
 	return child_tid;
 }
@@ -161,18 +175,11 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	bool succ = true;
 
 	//--------------project2-system_call-start---------------
-	parent_if = &(parent->tf);
-	parent_if->R.rax = 0;
 
-	// // clone the value of the "calle-saved" registers
-	// parent_if->R.rbx = parent->tf.R.rbx;
-	// parent_if->rsp = parent->tf.rsp;
-	// parent_if->R.rbp = parent->tf.R.rbp;
-	// parent_if->R.r12 = parent->tf.R.r12;
-	// parent_if->R.r13 = parent->tf.R.r13;
-	// parent_if->R.r14 = parent->tf.R.r14;
-	// parent_if->R.r15 = parent->tf.R.r15;
-	
+	// 부모의 유저스택 레지스터 정보(parent_if_)를 저장
+	// clone all the value of the registers
+	memcpy(&parent_if, current->parent_if_, sizeof(struct intr_frame));
+
 	//--------------project2-system_call-end-----------------
 
 	/* 1. Read the cpu context to local stack. */
@@ -203,12 +210,6 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
-	// 자식이 부모를 복제해야하기 때문에 복제를 완료하기 전까지 부모를 살려둔다. 
-	// -> 부모는 세마 다운 함, 자식은 복제 다했으면 세마 업 함
-
-	// 부모는 세마 다운 된 상태로 기다리고 있음
-	// 부모 기다리는 기능 구현 아직 안 했음 ------------------------------------???
-	
 
 	// 부모와 연결된 파일들을 자식하고도 연결시킴
 	int fd_int;
@@ -217,14 +218,25 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
 
+	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+
 	// 자식 프로세스를 초기화?
 	process_init ();	// 없어도 됨
+
+	// 자식이 부모를 복제해야하기 때문에 복제를 완료하기 전까지 부모를 살려둔다. 
+	// -> 부모는 세마 다운 함, 자식은 복제 다했으면 세마 업 함
+	// 부모는 세마 다운 된 상태로 기다리고 있음 -> 다른 곳에서 wait()로 부모가 기다리도록 함
+	
+	// 세마 업
 
 	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
 		do_iret (&if_);
 	
 error:
+	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+	// 세마 업
+
 	thread_exit ();
 }
 
@@ -288,6 +300,10 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+
+	
+
+
 	return -1;
 }
 
