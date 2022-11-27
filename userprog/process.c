@@ -57,7 +57,11 @@ process_create_initd (const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
-	// printf("=====tid=%d\n", tid);
+	
+	// sema down
+	struct thread* child_thread = get_child_process(tid);
+	sema_down(&child_thread->load_sema);
+
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -302,6 +306,7 @@ process_exec (void *f_name) {
 	/* And then load the binary */
 	success = load (file_name, &_if);
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	sema_up(&thread_current()->load_sema);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -330,13 +335,18 @@ process_wait (tid_t child_tid UNUSED) {
 	struct thread *child_thread = get_child_process(child_tid);
 
 	// 예외처리 발생 시 -1 리턴
-	// if (child_thread->is_process_alive != 1) {
-	// 	return -1;
-	// }
+	if (child_thread == NULL)
+	{
+		return -1;
+	}
 
 	// wait for child. sema down.
-	sema_down(&child_thread->exit_sema);
+	sema_down(&child_thread->wait_sema);
 
+	// If pid did not call exit(), 
+	// but was terminated by the kernel 
+	// (e.g. killed due to an exception), 
+	// wait(pid) must return -1
 
 	return child_thread->exit_status;
 }
@@ -353,7 +363,7 @@ process_exit (void) {
 	// no print when kernel thread that is not a user process terminates // ??????
 	// printf("%s: exit(%d)\n", curr->name, );
 
-	sema_up(&curr->exit_sema);
+	sema_up(&curr->wait_sema);
 	process_cleanup ();
 }
 

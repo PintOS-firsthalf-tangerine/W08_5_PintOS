@@ -339,7 +339,7 @@ thread_create (const char *name, int priority,
 	t->is_process_alive = true;
 
 	/* exit 세마포어 0으로 초기화 */ 
-	sema_init(&t->exit_sema, 0);
+	sema_init(&t->wait_sema, 0);
 	
 	/* load 세마포어 0으로 초기화 */
 	sema_init(&t->load_sema, 0);

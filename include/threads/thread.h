@@ -134,8 +134,8 @@ struct thread {
 	/* 프로세스가 종료 유무 확인 */
 	int is_process_alive;	// 1: 살아있음, 0: 종료
 
-	/* exit 세마포어 */
-	struct semaphore exit_sema;
+	/* wait 세마포어 */
+	struct semaphore wait_sema;
 
 	/* load 세마포어 */
 	struct semaphore load_sema;
