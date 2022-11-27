@@ -166,11 +166,25 @@ int wait(pid_t pid) {
 	return process_wait(pid);
 }
 
-int exec(const char *cmd_line) {
+int exec(const char *file_name) {
 	// Create child process and execute program corresponds to cmd_line on it
 	// thread_create(cmd_line, PRI_DEFAULT, process_exec, cmd_line);
 	// tid 받았으니깐, 이걸로 process_exec의 반환값이 있으면 그걸 반환함
-	return process_create_initd(cmd_line);
+	check_address(file_name);
+
+	int size = strlen(file_name) + 1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if ((fn_copy) == NULL) {
+		exit(-1);
+	}
+	strlcpy(fn_copy, file_name, size);
+
+	if (process_exec(fn_copy) == -1) {
+		return -1;
+	}
+
+	NOT_REACHED();
+	return 0;
 }
 
 bool remove (const char *file) {

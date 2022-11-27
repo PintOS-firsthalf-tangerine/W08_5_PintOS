@@ -343,12 +343,16 @@ process_wait (tid_t child_tid UNUSED) {
 	// wait for child. sema down.
 	sema_down(&child_thread->wait_sema);
 
+	int exit_status = child_thread->exit_status;
+	list_remove(&child_thread->child_elem);
+
+	sema_up(&child_thread->free_sema);
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
 	// (e.g. killed due to an exception), 
 	// wait(pid) must return -1
 
-	return child_thread->exit_status;
+	return exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -364,6 +368,8 @@ process_exit (void) {
 	// printf("%s: exit(%d)\n", curr->name, );
 
 	sema_up(&curr->wait_sema);
+
+	sema_down(&curr->free_sema);
 	process_cleanup ();
 }
 
