@@ -1,4 +1,4 @@
-#include "tests/filesys/seq-test.h"
+s#include "tests/filesys/seq-test.h"
 #include <random.h>
 #include <syscall.h>
 #include "tests/lib.h"

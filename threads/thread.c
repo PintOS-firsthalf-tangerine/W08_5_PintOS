@@ -372,7 +372,7 @@ thread_create (const char *name, int priority,
 	}
 
 	//--------------project1-priority_scheduling-end-----------------
-
+	printf("===> 3 :: child Thread 생성 \n");
 	return tid;
 }
 

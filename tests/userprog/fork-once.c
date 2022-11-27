@@ -9,9 +9,13 @@ test_main (void)
 {
   int pid;
 
-  if ((pid = fork("child"))){
-    int status = wait (pid);
-    msg ("Parent: child exit status is %d", status);
+  pid = fork("child");
+  printf("===>pid : %d\n", pid);
+  if ((pid)){
+    printf("===> before waiting\n");
+    printf("===> I am parent\n");
+    //int status = wait (pid);
+    //msg ("Parent: child exit status is %d", status);
   } else {
     msg ("child run");
     exit(81);
