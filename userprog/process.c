@@ -140,39 +140,43 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {	// pte-> parent의 pte, va-
 	void *parent_page;
 	void *newpage;
 	bool writable;
-
+	
 	//--------------project2-system_call-start---------------
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
 	if (is_kernel_vaddr(va))	
 		return false;			
-
 	/* 2. Resolve VA from the parent's page map level 4. */
 	if((parent_page = pml4_get_page (parent->pml4, va)) == NULL){
-
 		return false;
 	}
-
+	
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
-	int newpage_size = palloc_init();	// 반환값 있음, 일단 넘어간다 ?????
-	if((newpage = palloc_get_page(PAL_USER || PAL_ZERO)) == NULL){	// 왜 PAL_ZERO 넣어야하지?????
+	// int newpage_size = palloc_init();	// 반환값 있음, 일단 넘어간다 ?????
+	if((newpage = palloc_get_page(PAL_USER | PAL_ZERO)) == NULL){	// 왜 PAL_ZERO 넣어야하지?????
 
 		return false;
 	}
-
+	printf("duplicate - 3======================\n");
+	
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
-	memcpy(newpage, parent_page, newpage_size);	// duplicate parent's page
+	memcpy(newpage, parent_page, PGSIZE);	// duplicate parent's page
 	writable = is_writable(pte); //
-
+	printf("writable: %d\n", writable);
+	printf("duplicate - 4======================\n");
+	
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+		printf("pml4_set_page error\n");
 		return false;
 	}
+	printf("duplicate - 5======================\n\n");
+	
 	return true;
 }
 #endif
@@ -220,11 +224,11 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	current->pml4 = pml4_create();	// 자식 스레드의 pml4에 커널용 pml4를 넣어줌
 	if (current->pml4 == NULL)
 		goto error;
-	printf("1======================\n");
+	printf("dofork - 1======================\n");
 
 	// (context switch를 위해) 커널용 pml4와 커널용 stack pointer를 자식 스레드(current)에 세팅해 줌
 	process_activate (current);	
-	printf("2======================\n");
+	printf("dofork - 2======================\n");
 	
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -234,10 +238,12 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	// duplicate_pte() 실행
 	//-> 부모 스레드의 주소 공간(페이지)을 새로 만든 공간(페이지)(자식용)에 그대로 복제
 	printf("else 들어옴\n");
-	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))	
-		goto error;
-	printf("3======================\n");
+	if (!pml4_for_each (parent->pml4, duplicate_pte, parent)){	
+		// printf("3======================\n");
+		goto error;}
+
 #endif
+	printf("dofork - 3======================\n");
 
 	/* TODO: Your code goes here.
 	 * TODO: Hint) To duplicate the file object, use `file_duplicate`	-> file은 디스크에 있기 때문
@@ -246,18 +252,18 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	 * TODO:       the resources of parent.*/
 
 	// 부모와 연결된 파일들을 자식하고도 연결시킴
-	printf("4======================\n");
+	printf("dofork - 4======================\n");
 	int fd_int;
 	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
-	printf("5======================\n");
+	printf("dofork - 5======================\n");
 	current->next_fd = parent->next_fd;
 
 	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
 
-	printf("6======================\n");
+	printf("dofork - 6======================\n");
 	// 자식 프로세스를 초기화?
 	process_init ();	// 없어도 됨
 
@@ -277,7 +283,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 error:
 	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
 	// 세마 업
-	printf("7======================\n");
+	printf("dofork - error 7======================\n");
 	sema_up(&current->exit_sema);
 	thread_exit ();
 }
