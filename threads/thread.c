@@ -347,6 +347,9 @@ thread_create (const char *name, int priority,
 	/* fork 세마포어 0으로 초기화 */
 	sema_init(&t->fork_sema, 0);
 
+	/* free 세마포어 0으로 초기화 */
+	sema_init(&t->free_sema, 0);
+
 	// 부모스레드의 자식리스트에 t 추가
 	list_push_back(&thread_current()->child_list, &t->child_elem);
 

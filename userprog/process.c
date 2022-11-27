@@ -58,9 +58,9 @@ process_create_initd (const char *file_name) {
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
 	
-	// sema down
-	struct thread* child_thread = get_child_process(tid);
-	sema_down(&child_thread->load_sema);
+	// // sema down
+	// struct thread* child_thread = get_child_process(tid);
+	// sema_down(&child_thread->load_sema);
 
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -92,29 +92,12 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
 	struct thread *curr = thread_current();
-
 	curr->parent_if_ = if_;
 
 	tid_t child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
-	// printf("process_fork() thread_create() 후, get_child_process 전\n");
-	// if (child_tid != TID_ERROR)
-	// {
-	// 	// child_tid를 이용해서 자식 스레드 찾기 
-	// 	struct thread *child_thread = get_child_process(child_tid);
-	// 	// child의 parent_if멤버에 인자로 받은 if_ 넣기
-	// 	printf("process_fork memcpy 전\n");
-	// 	// child_thread->parent_if_ = NULL;
-	// 	memcpy(child_thread->parent_if_, if_, sizeof(struct intr_frame));
-	// 	printf("process_fork memcpy 후\n");
-	// 	// child_thread->parent_if_ = if_;
-	// }
-	// printf("process_fork() thread_create() 후, get_child_process 후\n");
-
-	// 
 	struct thread *child = get_child_process(child_tid);
-
 	sema_down(&child->fork_sema);
 
 	if(child->exit_status == -1)	// 커널에서 종료된 경우 
@@ -253,6 +236,9 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	 * TODO:       the resources of parent.*/
 
 	// 부모와 연결된 파일들을 자식하고도 연결시킴
+	
+	current->fdt[0] = parent->fdt[0];	// STDIN
+	current->fdt[1] = parent->fdt[1];	// STDOUT
 	int fd_int;
 	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
@@ -277,10 +263,11 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 		do_iret (&if_);
 	
 error:
-	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+	current->exit_status = TID_ERROR;
 	// 세마 업
 	sema_up(&current->fork_sema);
-	thread_exit ();
+	exit(TID_ERROR);
+	//thread_exit ();
 }
 
 /* Switch the current execution context to the f_name.
@@ -342,13 +329,16 @@ process_wait (tid_t child_tid UNUSED) {
 
 	// wait for child. sema down.
 	sema_down(&child_thread->wait_sema);
+	int child_exit_status = child_thread->exit_status;
+	list_remove(&child_thread->child_elem);
+	sema_up(&child_thread->free_sema);
 
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
 	// (e.g. killed due to an exception), 
 	// wait(pid) must return -1
 
-	return child_thread->exit_status;
+	return child_exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -364,6 +354,7 @@ process_exit (void) {
 	// printf("%s: exit(%d)\n", curr->name, );
 
 	sema_up(&curr->wait_sema);
+	sema_down(&curr->free_sema);
 	process_cleanup ();
 }
 
@@ -599,6 +590,8 @@ load (const char *file_name, struct intr_frame *if_) {
 done:
 	/* We arrive here whether the load is successful or not. */
 	file_close (file);
+
+	// sema_up();
 	return success;
 }
 
