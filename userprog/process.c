@@ -56,6 +56,7 @@ process_create_initd (const char *file_name) {
 	parsed_file_name = strtok_r (file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
+	printf("===> parsed_file_name : %s\n", parsed_file_name);
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
 	// printf("=====tid=%d\n", tid);
 	if (tid == TID_ERROR)
@@ -271,6 +272,7 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
+	
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* If load failed, quit. */
@@ -552,6 +554,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	// printf("if_->R.rsi %p\n", if_->R.rsi);
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
+	printf ("===>load success?\n");
+
 
 done:
 	/* We arrive here whether the load is successful or not. */
