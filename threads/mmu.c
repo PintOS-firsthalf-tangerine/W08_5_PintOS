@@ -113,7 +113,9 @@ pt_for_each (uint64_t *pt, pte_for_each_func *func, void *aux,
 								 ((uint64_t) pdx_index << PDXSHIFT) |
 								 ((uint64_t) i << PTXSHIFT));
 			if (!func (pte, va, aux))	// func가 duplicate_pte(), pte->parent의 pte, aux->parent, va->새로만듦
-				return false;
+				{	
+					return false;
+				}
 		}
 	}
 	return true;
@@ -237,7 +239,7 @@ pml4_set_page (uint64_t *pml4, void *upage, void *kpage, bool rw) {
 	ASSERT (pg_ofs (kpage) == 0);
 	ASSERT (is_user_vaddr (upage));
 	ASSERT (pml4 != base_pml4);
-
+	
 	uint64_t *pte = pml4e_walk (pml4, (uint64_t) upage, 1);
 
 	if (pte)
