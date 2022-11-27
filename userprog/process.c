@@ -89,7 +89,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
 	tid_t child_tid;
-
+	printf("===> 2 :: process_fork doing\n");
 	child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
@@ -183,6 +183,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	struct intr_frame *parent_if;
 	bool succ = true;
 
+	if_.R.rax = 0;
 	//--------------project2-system_call-start---------------
 
 	// 부모의 유저스택 레지스터 정보(parent_if_)를 저장
@@ -226,8 +227,8 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	{
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
-
-	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+	current->next_fd = parent->next_fd;
+		// 자식 프로세스의 return value를 0으로 설정
 
 	// 자식 프로세스를 초기화?
 	process_init ();	// 없어도 됨
@@ -237,17 +238,16 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	// 부모는 세마 다운 된 상태로 기다리고 있음 -> 다른 곳에서 wait()로 부모가 기다리도록 함
 	
 	// 자식의 exit_sema를 세마 업
-	sema_up(&current->exit_sema);
+	//sema_up(&current->exit_sema);
 
 	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
 		do_iret (&if_);
 	
 error:
-	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+	{if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
 	// 세마 업
-
-	thread_exit ();
+	thread_exit ();}
 }
 
 /* Switch the current execution context to the f_name.
@@ -304,6 +304,7 @@ process_wait (tid_t child_tid UNUSED) {
 	// child_tid를 이용해서 자식 스레드 찾기 
 	struct thread *child_thread = get_child_process(child_tid);
 
+	thread_set_priority(3);
 	// wait for child. sema down.
 	sema_down(&child_thread->exit_sema);
 
@@ -554,7 +555,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	// printf("if_->R.rsi %p\n", if_->R.rsi);
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
-	printf ("===>load success?\n");
+	printf ("===>load success\n");
 
 
 done:
