@@ -161,6 +161,7 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 int wait(pid_t pid) {
 	// Wait for termination of child process whose process id is pid
 
+	//?????? wait하는동안 interrupt disable해야하나?
 	return process_wait(pid);
 }
 
