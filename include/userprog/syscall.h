@@ -29,6 +29,8 @@ void check_address(void *addr);
 void halt (void);
 void exit (int status);
 pid_t fork (const char *thread_name, struct intr_frame *if_);
+int wait(pid_t pid);
+int exec (const char *cmd_line);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int open (const char *file);

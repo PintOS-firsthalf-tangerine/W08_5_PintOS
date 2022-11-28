@@ -114,7 +114,6 @@ pt_for_each (uint64_t *pt, pte_for_each_func *func, void *aux,
 								 ((uint64_t) i << PTXSHIFT));
 			if (!func (pte, va, aux))	// func가 duplicate_pte(), pte->parent의 pte, aux->parent, va->새로만듦
 				{	
-					printf("duplicate false, pte : %d, thread_name : %s\n", *pte, ((struct thread *)aux)->name);
 					return false;
 				}
 		}

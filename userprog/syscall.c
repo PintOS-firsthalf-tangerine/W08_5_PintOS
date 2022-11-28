@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "include/threads/palloc.h"
 
 /* System call.
  *
@@ -46,6 +47,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_EXEC:
+			f->R.rax = exec(f->R.rdi);
 			break;
 		case SYS_CREATE:
 			f->R.rax = create(f->R.rdi, f->R.rsi);
@@ -162,11 +166,31 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 int wait(pid_t pid) {
 	// Wait for termination of child process whose process id is pid
 
+	//?????? wait하는동안 interrupt disable해야하나?
 	return process_wait(pid);
 }
 
 int exec(const char *cmd_line) {
 	// Create child process and execute program corresponds to cmd_line on it
+	// thread_create(cmd_line, PRI_DEFAULT, process_exec, cmd_line);
+	// tid 받았으니깐, 이걸로 process_exec의 반환값이 있으면 그걸 반환함
+
+	check_address(cmd_line);
+	// FILE_NAME을 복사하기 위한 작업 - process_create_initd() 참고
+	int size = strlen(cmd_line) + 1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if ((fn_copy) == NULL) {
+		exit(-1);
+	}
+	strlcpy(fn_copy, cmd_line, size);
+
+	if (process_exec(fn_copy) == -1) {
+		return -1;
+	}
+
+	NOT_REACHED();
+
+	// return process_create_initd(cmd_line);
 }
 
 bool remove (const char *file) {
@@ -206,18 +230,18 @@ int open (const char *file){
 	return fd;
 }
 
-int filesize (int fd){
-	// printf("======filesize들어옴, fd: %d\n", fd);
-	// 파일의 길이를 반환
+int filesize (int fd){	// 파일의 길이를 반환
+	
 	if(!(2 <= fd && fd < 64))
 		return -1;
-	// printf("==thread_current()->next_fd: %d\n", thread_current()->next_fd);
+	
 	struct file *curr_file = thread_current()->fdt[fd];
 	if (curr_file == NULL)
 			return -1;
-
-	// printf("file_length: %d\n", file_length(thread_current()->fdt[fd]));
-	return file_length(thread_current()->fdt[fd]);
+	// lock_acquire(&filesys_lock);	// filesys_lock을 획득
+	off_t file_size_result = file_length(thread_current()->fdt[fd]);
+	// lock_release(&filesys_lock);	// filesys_lock release
+	return file_size_result;
 }
 
 int read (int fd, void *buffer, unsigned size){
@@ -243,8 +267,11 @@ int read (int fd, void *buffer, unsigned size){
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return -1;
-		
-		return file_read(curr_file, buffer, size);
+
+		lock_acquire(&filesys_lock);	// lock 걸기
+		off_t read_result = file_read(curr_file, buffer, size);
+		lock_release(&filesys_lock);	// lock 풀기
+		return read_result;
 	}
 	else {
 		return -1;
@@ -260,8 +287,10 @@ int write(int fd, const void *buffer, unsigned size) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return -1;
-		
-		return file_write(curr_file, buffer, size);
+		lock_acquire(&filesys_lock);	// lock 걸기
+		off_t write_result = file_write(curr_file, buffer, size);
+		lock_release(&filesys_lock);	// lock 풀기
+		return write_result;
 	}
 	else {
 		return -1;
@@ -273,8 +302,9 @@ void seek (int fd, unsigned position) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return;
-
+		// lock_acquire(&filesys_lock);	// lock 걸기
 		file_seek(curr_file, position);
+		// lock_release(&filesys_lock);	// lock 풀기
 	}
 }
 
@@ -283,8 +313,10 @@ unsigned tell (int fd) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return -1;
-		
-		return file_tell(curr_file);
+		// lock_acquire(&filesys_lock);	// lock 걸기
+		off_t tell_result = file_tell(curr_file);
+		// lock_release(&filesys_lock);	// lock 풀기
+		return tell_result;
 	}
 	else {
 		return -1;
@@ -297,7 +329,10 @@ void close (int fd) {
 		if (curr_file == NULL)
 			return;
 
+		// lock_acquire(&filesys_lock);	// lock 걸기
 		file_close(curr_file);
+		// lock_release(&filesys_lock);	// lock 풀기
+
 		thread_current()->fdt[fd] = NULL;
 	}
 }

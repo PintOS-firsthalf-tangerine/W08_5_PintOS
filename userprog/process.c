@@ -58,7 +58,11 @@ process_create_initd (const char *file_name) {
 	/* Create a new thread to execute FILE_NAME. */
 	printf("===> parsed_file_name : %s\n", parsed_file_name);
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
-	// printf("=====tid=%d\n", tid);
+	
+	// // sema down
+	// struct thread* child_thread = get_child_process(tid);
+	// sema_down(&child_thread->load_sema);
+
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -94,26 +98,19 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	child_tid = thread_create (name,
 =======
 	struct thread *curr = thread_current();
-
 	curr->parent_if_ = if_;
 
 	tid_t child_tid = thread_create (name,
 >>>>>>> cec1911820d76fe27005cb44ce8a9b0f96179a87
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
-	// printf("process_fork() thread_create() 후, get_child_process 전\n");
-	// if (child_tid != TID_ERROR)
-	// {
-	// 	// child_tid를 이용해서 자식 스레드 찾기 
-	// 	struct thread *child_thread = get_child_process(child_tid);
-	// 	// child의 parent_if멤버에 인자로 받은 if_ 넣기
-	// 	printf("process_fork memcpy 전\n");
-	// 	// child_thread->parent_if_ = NULL;
-	// 	memcpy(child_thread->parent_if_, if_, sizeof(struct intr_frame));
-	// 	printf("process_fork memcpy 후\n");
-	// 	// child_thread->parent_if_ = if_;
-	// }
-	// printf("process_fork() thread_create() 후, get_child_process 후\n");
+	struct thread *child = get_child_process(child_tid);
+	sema_down(&child->fork_sema);
+
+	if(child->exit_status == -1)	// 커널에서 종료된 경우 
+	{
+		return TID_ERROR;
+	}
 
 	return child_tid;
 }
@@ -152,7 +149,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {	// pte-> parent의 pte, va-
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
 	if (is_kernel_vaddr(va))	
-		return false;			
+		return true;			
 	/* 2. Resolve VA from the parent's page map level 4. */
 	if((parent_page = pml4_get_page (parent->pml4, va)) == NULL){
 		return false;
@@ -165,24 +162,19 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {	// pte-> parent의 pte, va-
 
 		return false;
 	}
-	printf("duplicate - 3======================\n");
 	
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
 	memcpy(newpage, parent_page, PGSIZE);	// duplicate parent's page
 	writable = is_writable(pte); //
-	printf("writable: %d\n", writable);
-	printf("duplicate - 4======================\n");
 	
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
-		printf("pml4_set_page error\n");
 		return false;
 	}
-	printf("duplicate - 5======================\n\n");
 	
 	return true;
 }
@@ -194,13 +186,11 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {	// pte-> parent의 pte, va-
  *       this function. */
 static void
 __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 함수를 실행하고, 종료된다
-	printf("do_fork start ===========\n");
 	struct intr_frame if_;
 	struct thread *parent = (struct thread *) aux;	//	부모 스레드(USER)
 	struct thread *current = thread_current ();		//	자식 스레드(현재 스레드)(USER)
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if = parent->parent_if_;
-	printf("do_fork parent_if ===========\n");
 	bool succ = true;
 
 <<<<<<< HEAD
@@ -226,20 +216,16 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	/* 1. Read the cpu context to local stack. */
 	// cpu context: parent_if, local stack: &if_
 	// printf("if memcpy로 값 넣어주기 전\n");
-	printf("memcpy1==================\n");
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
-	printf("memcpy2==================\n");
 	// printf("if memcpy로 값 넣어준 후\n");
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();	// 자식 스레드의 pml4에 커널용 pml4를 넣어줌
 	if (current->pml4 == NULL)
 		goto error;
-	printf("dofork - 1======================\n");
 
 	// (context switch를 위해) 커널용 pml4와 커널용 stack pointer를 자식 스레드(current)에 세팅해 줌
 	process_activate (current);	
-	printf("dofork - 2======================\n");
 	
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -248,13 +234,11 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 #else
 	// duplicate_pte() 실행
 	//-> 부모 스레드의 주소 공간(페이지)을 새로 만든 공간(페이지)(자식용)에 그대로 복제
-	printf("else 들어옴\n");
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent)){	
-		// printf("3======================\n");
-		goto error;}
+		goto error;
+		}
 
 #endif
-	printf("dofork - 3======================\n");
 
 	/* TODO: Your code goes here.
 	 * TODO: Hint) To duplicate the file object, use `file_duplicate`	-> file은 디스크에 있기 때문
@@ -263,18 +247,18 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	 * TODO:       the resources of parent.*/
 
 	// 부모와 연결된 파일들을 자식하고도 연결시킴
-	printf("dofork - 4======================\n");
+	
+	current->fdt[0] = parent->fdt[0];	// STDIN
+	current->fdt[1] = parent->fdt[1];	// STDOUT
 	int fd_int;
 	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
-	printf("dofork - 5======================\n");
 	current->next_fd = parent->next_fd;
 
 	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
 
-	printf("dofork - 6======================\n");
 	// 자식 프로세스를 초기화?
 	process_init ();	// 없어도 됨
 
@@ -282,22 +266,19 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	// -> 부모는 세마 다운 함, 자식은 복제 다했으면 세마 업 함
 	// 부모는 세마 다운 된 상태로 기다리고 있음 -> 다른 곳에서 wait()로 부모가 기다리도록 함
 	
-	printf("before sema up==============\n");
-	// 자식의 exit_sema를 세마 업
-	//sema_up(&current->exit_sema);
+	// 자식의 fork_sema를 세마 업
+	sema_up(&current->fork_sema);
 
 	/* Finally, switch to the newly created process. */ // -> new process가 자식임
 	if (succ)
 		do_iret (&if_);
 	
-	printf("after sema up==============\n");
 error:
-	{if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
+	current->exit_status = TID_ERROR;
 	// 세마 업
-	printf("dofork - error 7======================\n");
-	sema_up(&current->exit_sema);
-	thread_exit ();
->>>>>>> cec1911820d76fe27005cb44ce8a9b0f96179a87
+	sema_up(&current->fork_sema);
+	exit(TID_ERROR);
+	//thread_exit ();
 }
 
 /* Switch the current execution context to the f_name.
@@ -324,6 +305,7 @@ process_exec (void *f_name) {
 	success = load (file_name, &_if);
 	
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	sema_up(&thread_current()->load_sema);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -347,20 +329,28 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
-	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	 * XXX:       to add infinite loop here before
-	 * XXX:       implementing the process_wait. */
-
-	thread_set_priority(3);
 
 	// child_tid를 이용해서 자식 스레드 찾기 
 	struct thread *child_thread = get_child_process(child_tid);
 
-	thread_set_priority(3);
-	// wait for child. sema down.
-	sema_down(&child_thread->exit_sema);
+	// 예외처리 발생 시 -1 리턴
+	if (child_thread == NULL)
+	{
+		return -1;
+	}
 
-	return -1;
+	// wait for child. sema down.
+	sema_down(&child_thread->wait_sema);
+	int child_exit_status = child_thread->exit_status;
+	list_remove(&child_thread->child_elem);
+	sema_up(&child_thread->free_sema);
+
+	// If pid did not call exit(), 
+	// but was terminated by the kernel 
+	// (e.g. killed due to an exception), 
+	// wait(pid) must return -1
+
+	return child_exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -375,7 +365,8 @@ process_exit (void) {
 	// no print when kernel thread that is not a user process terminates // ??????
 	// printf("%s: exit(%d)\n", curr->name, );
 
-	sema_up(&curr->exit_sema);
+	sema_up(&curr->wait_sema);
+	sema_down(&curr->free_sema);
 	process_cleanup ();
 }
 
@@ -613,6 +604,8 @@ load (const char *file_name, struct intr_frame *if_) {
 done:
 	/* We arrive here whether the load is successful or not. */
 	file_close (file);
+
+	// sema_up();
 	return success;
 }
 
