@@ -76,8 +76,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_CLOSE:
 			close(f->R.rdi);
+			break;	
+		default:
+			exit(-1);
 			break;
-	}
+		}
 
 	// Check validation of the pointers in the parameter list.
 	check_address(f->rsp);
@@ -213,12 +216,12 @@ int open (const char *file){
 
 	if ((open_file = filesys_open(file)) != NULL) {	// open이 되면 if문 들어감
 
-		lock_acquire(&filesys_lock);	// filesys_lock을 획득
+		// lock_acquire(&filesys_lock);	// filesys_lock을 획득
 		fd = thread_current()->next_fd++;	// next_fd를 반환하도록 하고, 다음 fd를 위해 1을 더해줌
 		thread_current()->fdt[fd] = open_file;	// fdt[fd]에 file 넣기
 		if (fd >= 64)					// fd의 max 크기가 64임
 			fd = -1;
-		lock_release(&filesys_lock);	// filesys_lock release
+		// lock_release(&filesys_lock);	// filesys_lock release
 	}
 
 	return fd;
@@ -232,9 +235,7 @@ int filesize (int fd){	// 파일의 길이를 반환
 	struct file *curr_file = thread_current()->fdt[fd];
 	if (curr_file == NULL)
 			return -1;
-	lock_acquire(&filesys_lock);	// filesys_lock을 획득
 	off_t file_size_result = file_length(thread_current()->fdt[fd]);
-	lock_release(&filesys_lock);	// filesys_lock release
 	return file_size_result;
 }
 
@@ -248,7 +249,7 @@ int read (int fd, void *buffer, unsigned size){
 			cnt++;
 
 			char key = input_getc();
-			if (key == '\n') {	// '\n'이 온 경우
+			if (key == '\0') {	// '\n'이 온 경우
 				char *buffer = key;
 				break;
 			}
@@ -296,9 +297,7 @@ void seek (int fd, unsigned position) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return;
-		lock_acquire(&filesys_lock);	// lock 걸기
 		file_seek(curr_file, position);
-		lock_release(&filesys_lock);	// lock 풀기
 	}
 }
 
@@ -307,9 +306,7 @@ unsigned tell (int fd) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return -1;
-		lock_acquire(&filesys_lock);	// lock 걸기
 		off_t tell_result = file_tell(curr_file);
-		lock_release(&filesys_lock);	// lock 풀기
 		return tell_result;
 	}
 	else {
@@ -323,9 +320,7 @@ void close (int fd) {
 		if (curr_file == NULL)
 			return;
 
-		lock_acquire(&filesys_lock);	// lock 걸기
 		file_close(curr_file);
-		lock_release(&filesys_lock);	// lock 풀기
 
 		thread_current()->fdt[fd] = NULL;
 	}

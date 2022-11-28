@@ -60,7 +60,7 @@ process_create_initd (const char *file_name) {
 	
 	// sema down
 	struct thread* child_thread = get_child_process(tid);
-	sema_down(&child_thread->load_sema);
+	// sema_down(&child_thread->load_sema);
 
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -94,6 +94,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	struct thread *curr = thread_current();
 
 	curr->parent_if_ = if_;
+	// memcpy(curr->parent_if_, if_, sizeof(struct intr_frame));
 
 	tid_t child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
@@ -104,10 +105,8 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// 	// child_tid를 이용해서 자식 스레드 찾기 
 	// 	struct thread *child_thread = get_child_process(child_tid);
 	// 	// child의 parent_if멤버에 인자로 받은 if_ 넣기
-	// 	printf("process_fork memcpy 전\n");
 	// 	// child_thread->parent_if_ = NULL;
 	// 	memcpy(child_thread->parent_if_, if_, sizeof(struct intr_frame));
-	// 	printf("process_fork memcpy 후\n");
 	// 	// child_thread->parent_if_ = if_;
 	// }
 	// printf("process_fork() thread_create() 후, get_child_process 후\n");
@@ -130,7 +129,7 @@ struct thread *get_child_process(int pid) {
 	struct thread *curr = thread_current();
 	struct list_elem *temp_elem = list_begin(&curr->child_list);
 	
-	for(; temp_elem != list_tail(&curr->child_list); temp_elem = temp_elem->next) {
+	for(; temp_elem != list_tail(&curr->child_list); temp_elem = list_next(temp_elem)) {
 		struct thread *temp_thread = list_entry(temp_elem, struct thread, child_elem);
 		if (temp_thread->tid == pid) {
 			/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
@@ -254,7 +253,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 
 	// 부모와 연결된 파일들을 자식하고도 연결시킴
 	int fd_int;
-	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
+	for (fd_int=0; fd_int<parent->next_fd; fd_int++)
 	{
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
@@ -288,6 +287,8 @@ error:
 int
 process_exec (void *f_name) {
 	char *file_name = f_name;
+	char copy[128];
+	memcpy(copy,file_name,strlen(file_name) + 1);
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
@@ -304,9 +305,9 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (copy, &_if);
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
-	sema_up(&thread_current()->load_sema);
+	// sema_up(&thread_current()->load_sema);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -368,6 +369,8 @@ process_exit (void) {
 	// printf("%s: exit(%d)\n", curr->name, );
 
 	sema_up(&curr->wait_sema);
+
+
 
 	sema_down(&curr->free_sema);
 	process_cleanup ();
