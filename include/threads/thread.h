@@ -117,9 +117,8 @@ struct thread {
 	int next_fd;
 
 	// 한양대
-	struct list file_list;
+	// struct list file_list;
 	struct file *running_file;
-	struct lock deny_lock;
 	// 한양대
 
 	// parent, child 만들어야 함!!

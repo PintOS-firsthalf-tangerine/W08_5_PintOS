@@ -361,9 +361,9 @@ process_exit (void) {
 	// 한양대 start
 	/* Destroy the current process's page directory
 	and switch backto the kernel-only page directory. */
-	pml4_destroy(curr->pml4);
+	// pml4_destroy(curr->pml4);
 
-	
+
 	/* 실행 중인 파일 close */
 	file_close(curr->running_file);
 	// 한양대 end
@@ -506,16 +506,10 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	//----------project2-userprogram-end----------------------------
 
-	// 한양대 start
-	lock_acquire(&t->deny_lock);
-	// 한양대 end
 
 	/* Open executable file. */
 	file = filesys_open (file_name);	// 프로그램 파일 Open
 	if (file == NULL) {
-		// 한양대 start
-		lock_release(&t->deny_lock);
-		// 한양대 end
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
@@ -524,7 +518,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	t->running_file = file;
 	/* file_deny_write()를 이용하여 파일에 대한 write를 거부 */
 	file_deny_write(file);
-	lock_release(&t->deny_lock);
 	// 한양대 end
 
 	/* Read and verify executable header. */
@@ -618,7 +611,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	// file_close (file);
 
 	// sema_up();
 	return success;
