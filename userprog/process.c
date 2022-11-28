@@ -1,4 +1,4 @@
-#include "userprog/process.h"
+-m #include "userprog/process.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -92,16 +92,15 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
-<<<<<<< HEAD
+
 	tid_t child_tid;
 	printf("===> 2 :: process_fork doing\n");
 	child_tid = thread_create (name,
-=======
-	struct thread *curr = thread_current();
+
+	gistruct thread *curr = thread_current();
 	curr->parent_if_ = if_;
 
 	tid_t child_tid = thread_create (name,
->>>>>>> cec1911820d76fe27005cb44ce8a9b0f96179a87
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
 	
 	struct thread *child = get_child_process(child_tid);
@@ -193,11 +192,11 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	struct intr_frame *parent_if = parent->parent_if_;
 	bool succ = true;
 
-<<<<<<< HEAD
-	if_.R.rax = 0;
-=======
 
->>>>>>> cec1911820d76fe27005cb44ce8a9b0f96179a87
+	if_.R.rax = 0;
+
+
+
 	//--------------project2-system_call-start---------------
 
 	// 부모의 유저스택 레지스터 정보(parent_if_)를 저장
