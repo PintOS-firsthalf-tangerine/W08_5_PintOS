@@ -343,7 +343,6 @@ process_wait (tid_t child_tid UNUSED) {
 	int child_exit_status = child_thread->exit_status;
 	list_remove(&child_thread->child_elem);
 	sema_up(&child_thread->free_sema);
-	printf(" ===> 44 free sema up 끝: %s\n", child_thread->name);
 
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
