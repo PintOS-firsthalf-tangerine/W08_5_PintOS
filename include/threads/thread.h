@@ -125,7 +125,7 @@ struct thread {
 	struct list_elem child_elem;	// 자식들 리스트 안의 하나의 자식
 
 	struct list_elem all_list_elem;	// all_list에 들어갈 elem
-	struct intr_frame* parent_if_;	// fork할 때, 부모의 커널스택에 있는 interrupt frame을 저장
+	struct intr_frame parent_if_;	// fork할 때, 부모의 커널스택에 있는 interrupt frame을 저장
 									// -> 부모의 User모드 레지스터 정보
 
 	/* 프로세스의 프로그램 메모리 적재 유무 */ 

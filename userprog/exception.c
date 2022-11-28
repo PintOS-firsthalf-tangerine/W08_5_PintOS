@@ -144,9 +144,6 @@ page_fault (struct intr_frame *f) {
 	exit(-1);
 	//--------------project2-system_call-end-----------------
 
-	//--------------project2-system_call-start---------------
-	exit(-1);
-	//--------------project2-system_call-end-----------------
 	
 #ifdef VM
 	/* For project 3 and later. */

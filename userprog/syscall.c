@@ -218,14 +218,15 @@ int open (const char *file){
 
 	if ((open_file = filesys_open(file)) != NULL) {	// open이 되면 if문 들어감
 
-		lock_acquire(&filesys_lock);	// filesys_lock을 획득
+			// filesys_lock을 획득
 		fd = thread_current()->next_fd++;	// next_fd를 반환하도록 하고, 다음 fd를 위해 1을 더해줌
 		thread_current()->fdt[fd] = open_file;	// fdt[fd]에 file 넣기
 		if (fd >= 64)					// fd의 max 크기가 64임
 			fd = -1;
-		lock_release(&filesys_lock);	// filesys_lock release
+
 	}
 
+		
 	return fd;
 }
 
@@ -331,7 +332,6 @@ void close (int fd) {
 		// lock_acquire(&filesys_lock);	// lock 걸기
 		file_close(curr_file);
 		// lock_release(&filesys_lock);	// lock 풀기
-
 		thread_current()->fdt[fd] = NULL;
 	}
 }

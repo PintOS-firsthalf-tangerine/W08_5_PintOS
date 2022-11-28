@@ -92,7 +92,9 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
 	struct thread *curr = thread_current();
-	curr->parent_if_ = if_;
+	// curr->parent_if_ = if_;
+	memcpy(&curr->parent_if_, if_, sizeof(struct intr_frame));
+
 
 	tid_t child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
@@ -183,7 +185,8 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	struct thread *parent = (struct thread *) aux;	//	부모 스레드(USER)
 	struct thread *current = thread_current ();		//	자식 스레드(현재 스레드)(USER)
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if = parent->parent_if_;
+	struct intr_frame *parent_if = &parent->parent_if_;
+	
 	bool succ = true;
 
 
@@ -293,7 +296,7 @@ process_exec (void *f_name) {
 	/* And then load the binary */
 	success = load (file_name, &_if);
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
-	sema_up(&thread_current()->load_sema);
+	// sema_up(&thread_current()->load_sema);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -493,6 +496,8 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Open executable file. */
 	file = filesys_open (file_name);	// 프로그램 파일 Open
+	file_deny_write(file);
+
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -590,7 +595,6 @@ load (const char *file_name, struct intr_frame *if_) {
 done:
 	/* We arrive here whether the load is successful or not. */
 	file_close (file);
-
 	// sema_up();
 	return success;
 }
