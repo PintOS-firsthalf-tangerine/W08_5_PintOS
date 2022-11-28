@@ -332,11 +332,16 @@ process_wait (tid_t child_tid UNUSED) {
 		return -1;
 	}
 
+
 	// wait for child. sema down.
+	printf(" ===> 11 wait sema down 시작 : %s\n", child_thread->name);
 	sema_down(&child_thread->wait_sema);
+	printf(" ===> 22 wait sema down 끝 : %s\n", child_thread->name);
 	int child_exit_status = child_thread->exit_status;
 	list_remove(&child_thread->child_elem);
+	printf(" ===> 33 free sema up 시작: %s\n", child_thread->name);
 	sema_up(&child_thread->free_sema);
+	printf(" ===> 44 free sema up 끝: %s\n", child_thread->name);
 
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
@@ -366,10 +371,17 @@ process_exit (void) {
 
 	/* 실행 중인 파일 close */
 	file_close(curr->running_file);
+
+	//palloc_free_multiple(curr->fdt, PAL);
 	// 한양대 end
 
+	printf(" ===> 222 wait sema up 시작: %s\n", thread_name());
 	sema_up(&curr->wait_sema);
+	printf(" ===> 333 wait sema up 끝 : %s\n", thread_name());
+
+	printf(" ===> 444 free sema down 시작 : %s\n", thread_name());
 	sema_down(&curr->free_sema);
+	printf(" ===> 555 free sema down 끝 : %s\n", thread_name());
 	process_cleanup ();
 }
 
