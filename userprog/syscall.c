@@ -180,8 +180,8 @@ int exec(const char *file_name) {
 	if ((fn_copy) == NULL) {
 		exit(-1);
 	}
-	strlcpy(fn_copy, file_name, size);
-
+	strlcpy(fn_copy, cmd_line, size);
+	
 	if (process_exec(fn_copy) == -1) {
 		return -1;
 	}
@@ -215,6 +215,7 @@ int open (const char *file){
 	int fd = -1;	// fd값을 -1로 초기화 -> open이 안되면 -1을 반환해야 함
 
 	if ((open_file = filesys_open(file)) != NULL) {	// open이 되면 if문 들어감
+		// filesys_lock을 획득
 
 		// lock_acquire(&filesys_lock);	// filesys_lock을 획득
 		fd = thread_current()->next_fd++;	// next_fd를 반환하도록 하고, 다음 fd를 위해 1을 더해줌
@@ -235,7 +236,9 @@ int filesize (int fd){	// 파일의 길이를 반환
 	struct file *curr_file = thread_current()->fdt[fd];
 	if (curr_file == NULL)
 			return -1;
+	
 	off_t file_size_result = file_length(thread_current()->fdt[fd]);
+	
 	return file_size_result;
 }
 

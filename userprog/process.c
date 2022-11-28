@@ -92,9 +92,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
 	struct thread *curr = thread_current();
-
-	curr->parent_if_ = if_;
-	// memcpy(curr->parent_if_, if_, sizeof(struct intr_frame));
+	memcpy(&curr->parent_if_, if_, sizeof(struct intr_frame));
 
 	tid_t child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
@@ -199,7 +197,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	struct thread *parent = (struct thread *) aux;	//	부모 스레드(USER)
 	struct thread *current = thread_current ();		//	자식 스레드(현재 스레드)(USER)
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if = parent->parent_if_;
+	struct intr_frame *parent_if = &parent->parent_if_;
 	bool succ = true;
 
 
@@ -303,11 +301,13 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
-
+	
 	/* And then load the binary */
-	success = load (copy, &_if);
+	success = load (file_name, &_if);
+	
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	// sema_up(&thread_current()->load_sema);
+
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -331,6 +331,12 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
+
+	// printf("======process_wait start\n");
+
+	// thread_set_priority(3);
+	// printf("======process_wait end\n");
+	// return -1;
 
 	// child_tid를 이용해서 자식 스레드 찾기 
 	struct thread *child_thread = get_child_process(child_tid);
@@ -367,6 +373,16 @@ process_exit (void) {
 	// %s: full name passed to fork()
 	// no print when kernel thread that is not a user process terminates // ??????
 	// printf("%s: exit(%d)\n", curr->name, );
+
+	// 한양대 start
+	/* Destroy the current process's page directory
+	and switch backto the kernel-only page directory. */
+	pml4_destroy(curr->pml4);
+
+	
+	/* 실행 중인 파일 close */
+	file_close(curr->running_file);
+	// 한양대 end
 
 	sema_up(&curr->wait_sema);
 
@@ -509,12 +525,26 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	//----------project2-userprogram-end----------------------------
 
+	// 한양대 start
+	lock_acquire(&t->deny_lock);
+	// 한양대 end
+
 	/* Open executable file. */
 	file = filesys_open (file_name);	// 프로그램 파일 Open
 	if (file == NULL) {
+		// 한양대 start
+		lock_release(&t->deny_lock);
+		// 한양대 end
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
+	// 한양대 start
+	/* thread 구조체의 run_file을 현재 실행할 파일로 초기화 */ 
+	t->running_file = file;
+	/* file_deny_write()를 이용하여 파일에 대한 write를 거부 */
+	file_deny_write(file);
+	lock_release(&t->deny_lock);
+	// 한양대 end
 
 	/* Read and verify executable header. */
 	// ELF 파일의 헤더 정보를 읽어와서 &ehdr에 저장
@@ -594,9 +624,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */	
-
 	argument_stack(arg, argc, &if_->rsp);	// 아무거나 될 수 있는 자료형에 &if_->rsp(아무나의 주소)를 넣는다.
-
 	// 레지스터 R의 rdi, rsi에 각각 argc와 return address(fake address)를 넣는다.
 	if_->R.rdi = argc;	// argc
 	if_->R.rsi = if_->rsp + 8;
@@ -640,7 +668,7 @@ void argument_stack(char **argv, int argc, void **rsp)
 	int temp_argc = argc - 1;
 	int lens = 0;
 
-	char* address_argv[128];
+	char* address_argv[32];
 	for(; temp_argc >= 0; temp_argc--)
 	{	
 		str_l = strlen(argv[temp_argc]) + 1;
