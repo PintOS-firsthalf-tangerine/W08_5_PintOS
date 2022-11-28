@@ -116,8 +116,11 @@ struct thread {
 	struct file *fdt[64];
 	int next_fd;
 
-	// 커널 스택에 있는 interrupt frame을 저장하기 위함
-	struct intr_frame if_;
+	// 한양대
+	struct list file_list;
+	struct file *running_file;
+	struct lock deny_lock;
+	// 한양대
 
 	// parent, child 만들어야 함!!
 	struct thread* parent;		// 부모
@@ -136,9 +139,6 @@ struct thread {
 
 	/* wait 세마포어 */
 	struct semaphore wait_sema;
-
-	/* load 세마포어 */
-	struct semaphore load_sema;
 
 	/* fork 세마포어 */
 	struct semaphore fork_sema;

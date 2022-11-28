@@ -182,7 +182,7 @@ int exec(const char *cmd_line) {
 		exit(-1);
 	}
 	strlcpy(fn_copy, cmd_line, size);
-
+	
 	if (process_exec(fn_copy) == -1) {
 		return -1;
 	}
@@ -238,9 +238,9 @@ int filesize (int fd){	// 파일의 길이를 반환
 	struct file *curr_file = thread_current()->fdt[fd];
 	if (curr_file == NULL)
 			return -1;
-	// lock_acquire(&filesys_lock);	// filesys_lock을 획득
+	
 	off_t file_size_result = file_length(thread_current()->fdt[fd]);
-	// lock_release(&filesys_lock);	// filesys_lock release
+	
 	return file_size_result;
 }
 
@@ -302,9 +302,9 @@ void seek (int fd, unsigned position) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return;
-		// lock_acquire(&filesys_lock);	// lock 걸기
+		
 		file_seek(curr_file, position);
-		// lock_release(&filesys_lock);	// lock 풀기
+		
 	}
 }
 
@@ -331,7 +331,7 @@ void close (int fd) {
 
 		// lock_acquire(&filesys_lock);	// lock 걸기
 		file_close(curr_file);
-		// lock_release(&filesys_lock);	// lock 풀기
+
 		thread_current()->fdt[fd] = NULL;
 	}
 }
