@@ -350,6 +350,9 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
+	// t->fdt[0] = stdin;
+	// t->fdt = palloc_get_multiple(PAL_ZERO, 1);
+
 
 	/* Add to run queue. */
 	thread_unblock (t);	// t를 ready_list의 우선순위 순으로 삽입
@@ -782,12 +785,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	//--------------project1-alarm-end----------------
   
 	//--------------project2-system_call-start----------------
+	// t->fdt = (struct file*)palloc_get_multiple(PAL_ZERO, 1);
 	t->next_fd = 2;
 	t->fdt[0] = 0;	// stdin
 	t->fdt[1] = 1;	// stdout
 
 	/* exit 세마포어 0으로 초기화 */ 
-	sema_init(&t->wait_sema, 0);
+	sema_init(&t->exit_sema, 0);
 
 	/* fork 세마포어 0으로 초기화 */
 	sema_init(&t->fork_sema, 0);

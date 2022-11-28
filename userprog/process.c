@@ -95,13 +95,14 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	tid_t child_tid = thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());	// 여기의 curr는 parent(User)스레드임
-	
+
 	struct thread *child = get_child_process(child_tid);
 	sema_down(&child->fork_sema);
 
 	if(child->exit_status == -1)	// 커널에서 종료된 경우 
 	{
-		return TID_ERROR;
+		return process_wait(child_tid);
+		// return TID_ERROR;
 	}
 
 	return child_tid;
@@ -186,6 +187,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	bool succ = true;
 
 
+
 	//--------------project2-system_call-start---------------
 
 	// 부모의 유저스택 레지스터 정보(parent_if_)를 저장
@@ -239,11 +241,14 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	current->fdt[0] = parent->fdt[0];	// STDIN
 	current->fdt[1] = parent->fdt[1];	// STDOUT
 	int fd_int;
-	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
+	for (fd_int=2; fd_int<64; fd_int++)
 	{
+		// printf("fd_int: %d\n", fd_int);
+		if (!parent->fdt[fd_int]) continue;
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
 	current->next_fd = parent->next_fd;
+
 
 	if_.R.rax = 0;	// 자식 프로세스의 return value를 0으로 설정
 
@@ -332,14 +337,11 @@ process_wait (tid_t child_tid UNUSED) {
 		return -1;
 	}
 
-
 	// wait for child. sema down.
-	printf(" ===> 11 wait sema down 시작 : %s\n", child_thread->name);
-	sema_down(&child_thread->wait_sema);
-	printf(" ===> 22 wait sema down 끝 : %s\n", child_thread->name);
+	sema_down(&child_thread->exit_sema);
+
 	int child_exit_status = child_thread->exit_status;
 	list_remove(&child_thread->child_elem);
-	printf(" ===> 33 free sema up 시작: %s\n", child_thread->name);
 	sema_up(&child_thread->free_sema);
 	printf(" ===> 44 free sema up 끝: %s\n", child_thread->name);
 
@@ -375,13 +377,15 @@ process_exit (void) {
 	//palloc_free_multiple(curr->fdt, PAL);
 	// 한양대 end
 
-	printf(" ===> 222 wait sema up 시작: %s\n", thread_name());
-	sema_up(&curr->wait_sema);
-	printf(" ===> 333 wait sema up 끝 : %s\n", thread_name());
+	// fdt 테이블 순회하면서 닫기
+	for(int i = 2; i < 64; i++)
+	{
+		close(i);
+	}
 
-	printf(" ===> 444 free sema down 시작 : %s\n", thread_name());
+	sema_up(&curr->exit_sema);
 	sema_down(&curr->free_sema);
-	printf(" ===> 555 free sema down 끝 : %s\n", thread_name());
+	
 	process_cleanup ();
 }
 
