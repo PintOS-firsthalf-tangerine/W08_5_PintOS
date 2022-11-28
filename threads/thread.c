@@ -231,7 +231,6 @@ thread_init (void) {
 	//--------------project2-system_call-start---------------
 	// all list 초기화
 	list_init(&all_list);
-
 	//--------------project2-system_call-end-----------------
 
 	list_init (&destruction_req);
@@ -333,22 +332,10 @@ thread_create (const char *name, int priority,
 	t->parent = thread_current();
 
 	/* 프로그램이 로드되지 않음 */
-	t->is_load = false;
+	t->is_load = false;	///???? sungtae
 
 	/* 프로세스가 종료되지 않음 */
-	t->is_process_alive = true;
-
-	/* exit 세마포어 0으로 초기화 */ 
-	sema_init(&t->wait_sema, 0);
-	
-	/* load 세마포어 0으로 초기화 */
-	sema_init(&t->load_sema, 0);
-
-	/* fork 세마포어 0으로 초기화 */
-	sema_init(&t->fork_sema, 0);
-
-	/* free 세마포어 0으로 초기화 */
-	sema_init(&t->free_sema, 0);
+	t->is_process_alive = true;	// ????? sungtae
 
 	// 부모스레드의 자식리스트에 t 추가
 	list_push_back(&thread_current()->child_list, &t->child_elem);
@@ -799,7 +786,20 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->fdt[0] = 0;	// stdin
 	t->fdt[1] = 1;	// stdout
 
+	/* exit 세마포어 0으로 초기화 */ 
+	sema_init(&t->wait_sema, 0);
+
+	/* fork 세마포어 0으로 초기화 */
+	sema_init(&t->fork_sema, 0);
+
+	/* free 세마포어 0으로 초기화 */
+	sema_init(&t->free_sema, 0);
+
 	list_init(&t->child_list);	// 자식들 리스트 초기화 
+	// 한양대start
+	list_init(&t->file_list);
+	lock_init(&t->deny_lock);
+	// 한양대end
 	list_push_back(&all_list, &t->all_list_elem);	// all_list에 t 추가
 	//--------------project2-system_call-end------------------
 }	

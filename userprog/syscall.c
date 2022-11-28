@@ -182,7 +182,7 @@ int exec(const char *cmd_line) {
 		exit(-1);
 	}
 	strlcpy(fn_copy, cmd_line, size);
-
+	
 	if (process_exec(fn_copy) == -1) {
 		return -1;
 	}
@@ -217,13 +217,11 @@ int open (const char *file){
 	int fd = -1;	// fd값을 -1로 초기화 -> open이 안되면 -1을 반환해야 함
 
 	if ((open_file = filesys_open(file)) != NULL) {	// open이 되면 if문 들어감
-
-		lock_acquire(&filesys_lock);	// filesys_lock을 획득
+		// filesys_lock을 획득
 		fd = thread_current()->next_fd++;	// next_fd를 반환하도록 하고, 다음 fd를 위해 1을 더해줌
 		thread_current()->fdt[fd] = open_file;	// fdt[fd]에 file 넣기
 		if (fd >= 64)					// fd의 max 크기가 64임
 			fd = -1;
-		lock_release(&filesys_lock);	// filesys_lock release
 	}
 
 	return fd;
@@ -237,9 +235,9 @@ int filesize (int fd){	// 파일의 길이를 반환
 	struct file *curr_file = thread_current()->fdt[fd];
 	if (curr_file == NULL)
 			return -1;
-	// lock_acquire(&filesys_lock);	// filesys_lock을 획득
+	
 	off_t file_size_result = file_length(thread_current()->fdt[fd]);
-	// lock_release(&filesys_lock);	// filesys_lock release
+	
 	return file_size_result;
 }
 
@@ -301,9 +299,9 @@ void seek (int fd, unsigned position) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return;
-		// lock_acquire(&filesys_lock);	// lock 걸기
+		
 		file_seek(curr_file, position);
-		// lock_release(&filesys_lock);	// lock 풀기
+		
 	}
 }
 
@@ -312,9 +310,7 @@ unsigned tell (int fd) {
 		struct file *curr_file = thread_current()->fdt[fd];
 		if (curr_file == NULL)
 			return -1;
-		// lock_acquire(&filesys_lock);	// lock 걸기
 		off_t tell_result = file_tell(curr_file);
-		// lock_release(&filesys_lock);	// lock 풀기
 		return tell_result;
 	}
 	else {
@@ -328,9 +324,7 @@ void close (int fd) {
 		if (curr_file == NULL)
 			return;
 
-		// lock_acquire(&filesys_lock);	// lock 걸기
 		file_close(curr_file);
-		// lock_release(&filesys_lock);	// lock 풀기
 
 		thread_current()->fdt[fd] = NULL;
 	}
