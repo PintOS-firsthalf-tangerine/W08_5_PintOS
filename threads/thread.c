@@ -338,14 +338,7 @@ thread_create (const char *name, int priority,
 	/* 프로세스가 종료되지 않음 */
 	t->is_process_alive = true;
 
-	/* exit 세마포어 0으로 초기화 */ 
-	sema_init(&t->wait_sema, 0);
 	
-	/* load 세마포어 0으로 초기화 */
-	sema_init(&t->load_sema, 0);
-
-	/* fork 세마포어 0으로 초기화 */
-	sema_init(&t->fork_sema, 0);
 
 	// 부모스레드의 자식리스트에 t 추가
 	list_push_back(&thread_current()->child_list, &t->child_elem);
@@ -563,7 +556,6 @@ void test_max_priority(void)
 		// yield를 호출하여 현재 스레드를 READY로 만들고, ready_list에 넣는다.
 		thread_yield();
 	}
-	
 }
 
 /*
@@ -788,6 +780,18 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;			
 	t->init_priority = priority;	
 	list_init(&t->donations);		
+
+	/* exit 세마포어 0으로 초기화 */ 
+	sema_init(&t->wait_sema, 0);
+	
+	/* load 세마포어 0으로 초기화 */
+	sema_init(&t->load_sema, 0);
+
+	/* fork 세마포어 0으로 초기화 */
+	sema_init(&t->fork_sema, 0);
+
+	/* free 세마포어 0으로 초기화 */
+	sema_init(&t->free_sema, 0);
 	// donation_elem 을 초기화 하지 않는 이유 : 값이 들어가기 전까지 절대 사용되지 않으므로 할 필요 없다.
 	//--------------project1-alarm-end----------------
   

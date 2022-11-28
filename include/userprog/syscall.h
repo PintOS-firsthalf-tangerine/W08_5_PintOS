@@ -17,6 +17,7 @@
 #include "include/devices/input.h"	
 #include "include/lib/kernel/console.h"
 #include "include/userprog/process.h"
+#include "include/threads/palloc.h"
 
 // pid 자료형 추가
 /* Process identifier. */

@@ -143,6 +143,9 @@ struct thread {
 	/* fork 세마포어 */
 	struct semaphore fork_sema;
 
+	/* free 세마포어 */
+	struct semaphore free_sema;
+
 	/* exit 호출 시 종료 status */
 	int exit_status;	
 
