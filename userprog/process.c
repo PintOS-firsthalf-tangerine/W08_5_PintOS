@@ -241,10 +241,10 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	current->fdt[0] = parent->fdt[0];	// STDIN
 	current->fdt[1] = parent->fdt[1];	// STDOUT
 	int fd_int;
-	for (fd_int=2; fd_int<64; fd_int++)
+	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
 		// printf("fd_int: %d\n", fd_int);
-		if (!parent->fdt[fd_int]) continue;
+		// if (!parent->fdt[fd_int]) continue;
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
 	current->next_fd = parent->next_fd;
@@ -338,11 +338,15 @@ process_wait (tid_t child_tid UNUSED) {
 	}
 
 	// wait for child. sema down.
+	printf("exit_sema down 전 tid: %d\n", child_thread->tid);
 	sema_down(&child_thread->exit_sema);
+	printf("exit_sema down 후 tid: %d\n", child_thread->tid);
 
 	int child_exit_status = child_thread->exit_status;
 	list_remove(&child_thread->child_elem);
+	printf("free_sema up 전 tid: %d\n", child_thread->tid);
 	sema_up(&child_thread->free_sema);
+	printf("free_sema up 후 tid: %d\n", child_thread->tid);
 
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
@@ -377,13 +381,18 @@ process_exit (void) {
 	// 한양대 end
 
 	// fdt 테이블 순회하면서 닫기
-	for(int i = 2; i < 64; i++)
+	for(int i = 2; i < curr->next_fd; i++)
 	{
 		close(i);
 	}
 
+	
+	printf("exit_sema up 전 tid: %d\n", curr->tid);
 	sema_up(&curr->exit_sema);
+	printf("exit_sema up 후 tid: %d\n", curr->tid);
 	sema_down(&curr->free_sema);
+	printf("free_sema down 후 tid: %d\n", curr->tid);
+
 	
 	process_cleanup ();
 }

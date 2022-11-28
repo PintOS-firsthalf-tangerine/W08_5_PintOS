@@ -28,3 +28,4 @@ test_main (void)
   fork_and_wait();
   fork_and_wait();
 }
+
