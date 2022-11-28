@@ -159,6 +159,7 @@ pid_t fork (const char *thread_name, struct intr_frame *if_) {
 		다른 스레드와 Context Switching이 일어날 때(스레드A->스레드B) 
 		사용하던 레지스터 정보(유저모드, 커널모드 상관 없음)를 저장한 곳이다. 
 	*/
+	printf("our fork\n");
 	return process_fork(thread_name, if_);
 }
 
@@ -335,3 +336,4 @@ void close (int fd) {
 		thread_current()->fdt[fd] = NULL;
 	}
 }
+//

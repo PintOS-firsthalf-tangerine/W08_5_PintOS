@@ -1,4 +1,4 @@
-#include "userprog/process.h"
+-m #include "userprog/process.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -56,6 +56,7 @@ process_create_initd (const char *file_name) {
 	parsed_file_name = strtok_r (file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
+	printf("===> parsed_file_name : %s\n", parsed_file_name);
 	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
 	
 	// // sema down
@@ -91,6 +92,11 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	// if를 따로 저장해서 do_fork에 가져다 써야 한다. 
 	
+
+	tid_t child_tid;
+	printf("===> 2 :: process_fork doing\n");
+	child_tid = thread_create (name,
+
 	struct thread *curr = thread_current();
 	curr->parent_if_ = if_;
 
@@ -185,6 +191,10 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if = parent->parent_if_;
 	bool succ = true;
+
+
+	if_.R.rax = 0;
+
 
 
 	//--------------project2-system_call-start---------------
@@ -292,6 +302,7 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
+	
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	sema_up(&thread_current()->load_sema);
 
@@ -586,6 +597,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	// printf("if_->R.rsi %p\n", if_->R.rsi);
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
+	printf ("===>load success\n");
+
 
 done:
 	/* We arrive here whether the load is successful or not. */
