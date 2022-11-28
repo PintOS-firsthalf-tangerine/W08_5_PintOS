@@ -797,8 +797,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 	list_init(&t->child_list);	// 자식들 리스트 초기화 
 	// 한양대start
-	list_init(&t->file_list);
-	lock_init(&t->deny_lock);
+	// list_init(&t->file_list);
 	// 한양대end
 	list_push_back(&all_list, &t->all_list_elem);	// all_list에 t 추가
 	//--------------project2-system_call-end------------------
