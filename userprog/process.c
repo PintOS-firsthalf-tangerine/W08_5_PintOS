@@ -55,11 +55,16 @@ process_create_initd (const char *file_name) {
 	char *parsed_file_name, *save_ptr;
 	parsed_file_name = strtok_r (file_name, " ", &save_ptr);
 
-	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
-	
-	// // sema down
-	// struct thread* child_thread = get_child_process(tid);
+	// /* Create a new thread to execute FILE_NAME. */
+	// tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	// thread를 만들고 tid 반환, 스레드 종료된 거 아님
+
+	printf("prc_create_initd 안 .. file_name : %s\n", file_name);
+	printf("prc_create_initd 안 .. 현재 스레드 이름: %s\n", thread_name());
+	/*file_name을 가진 스레드 생성*/
+	tid = thread_create (parsed_file_name, PRI_DEFAULT, initd, fn_copy);	
+
+
+	printf("process_create_initd 에서 스레드 생성 후 ... \n");
 
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -74,6 +79,8 @@ initd (void *f_name) {
 #endif
 
 	process_init ();  
+
+	printf("initd 안에서 ... 즉, main의 자식 스레드가 cpu 받음 \n");
 
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
@@ -244,7 +251,7 @@ __do_fork (void *aux) {	// child 스레드는 인터럽트를 enable하고, 이 
 	for (fd_int=2; fd_int<parent->next_fd; fd_int++)
 	{
 		// printf("fd_int: %d\n", fd_int);
-		// if (!parent->fdt[fd_int]) continue;
+		if (!parent->fdt[fd_int]) continue;
 		current->fdt[fd_int] = file_duplicate(parent->fdt[fd_int]);	
 	}
 	current->next_fd = parent->next_fd;
@@ -280,6 +287,8 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
+	printf("process_exec 안 : 현재 스레드 이름: %s\n", thread_name());
+
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -304,6 +313,7 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
+	printf("이제 다른 프로세스로 스위칭 될거야 !!\n");
 	/* Start switched process. */
 	do_iret (&_if);	// ??????? 분석은 나중에
 	NOT_REACHED ();
@@ -330,7 +340,9 @@ process_wait (tid_t child_tid UNUSED) {
 
 	// child_tid를 이용해서 자식 스레드 찾기 
 	struct thread *child_thread = get_child_process(child_tid);
-
+	printf("기다리는 러닝(부모) 스레드 ... %s\n", thread_name());
+	printf("자식 스레드 %s 를 기다려요 ... \n", child_thread->name);
+	
 	// 예외처리 발생 시 -1 리턴
 	if (child_thread == NULL)
 	{
@@ -338,15 +350,24 @@ process_wait (tid_t child_tid UNUSED) {
 	}
 
 	// wait for child. sema down.
-	printf("exit_sema down 전 tid: %d\n", child_thread->tid);
+	// printf("process_wait() exit_sema down 전 tid: %d\n", child_thread->tid);
+	// printf("process_wait() exit_sema down 전 : %s\n", thread_name());
+	printf("자식 스레드 '%s' exit 세마 다운 이제 한다 ... \n", child_thread->name);
 	sema_down(&child_thread->exit_sema);
-	printf("exit_sema down 후 tid: %d\n", child_thread->tid);
+	// printf("process_wait() exit_sema down 후 : %s\n", thread_name());
+	// printf("process_wait() exit_sema down 후 tid: %d\n", child_thread->tid);
+	
+	printf("자식 스레드 '%s' exit 세마 다운 끝 ... \n", child_thread->name);
 
 	int child_exit_status = child_thread->exit_status;
 	list_remove(&child_thread->child_elem);
-	printf("free_sema up 전 tid: %d\n", child_thread->tid);
+	// printf("process_wait() free_sema up 전 tid: %d\n", child_thread->tid);
+	// printf("process_wait() free_sema up 전 : %s\n", thread_name());
+	printf("자식 스레드 free '%s' 세마 업 전 ... \n", child_thread->name);
 	sema_up(&child_thread->free_sema);
-	printf("free_sema up 후 tid: %d\n", child_thread->tid);
+	// printf("process_wait() free_sema up 후 tid: %d\n", child_thread->tid);
+	printf("자식 스레드 free '%s' 세마 업 끝 ... \n", child_thread->name);
+	// printf("process_wait() free_sema up 후 : %s\n", thread_name());
 
 	// If pid did not call exit(), 
 	// but was terminated by the kernel 
@@ -360,6 +381,7 @@ process_wait (tid_t child_tid UNUSED) {
 void
 process_exit (void) {
 	struct thread *curr = thread_current ();
+	printf("exit 안이에요 .. 이제 '%s' 끝내려구요 ... \n", curr->name);
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
@@ -387,11 +409,15 @@ process_exit (void) {
 	}
 
 	
-	printf("exit_sema up 전 tid: %d\n", curr->tid);
+	// printf("process_exit() exit_sema up 전 tid: %d\n", curr->tid);
+	// printf("process_exit() exit_sema up 전 : %s\n", thread_name());
 	sema_up(&curr->exit_sema);
-	printf("exit_sema up 후 tid: %d\n", curr->tid);
+	// printf("process_exit() exit_sema up 후 tid: %d\n", curr->tid);
+	// printf("process_exit() exit_sema up 후 : %s\n", thread_name());
+	// printf("process_exit() free_sema down 전 tid: %d\n", curr->tid);
 	sema_down(&curr->free_sema);
-	printf("free_sema down 후 tid: %d\n", curr->tid);
+	// printf("process_exit() free_sema down 후 tid: %d\n", curr->tid);
+	// printf("process_exit() free_sema down 후 : %s\n", thread_name());
 
 	
 	process_cleanup ();
@@ -544,6 +570,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	file_deny_write(file);
 	// 한양대 end
 
+	printf ("load() 안에서 [%s] file open 성공\n", file_name);
+
 	/* Read and verify executable header. */
 	// ELF 파일의 헤더 정보를 읽어와서 &ehdr에 저장
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -605,6 +633,7 @@ load (const char *file_name, struct intr_frame *if_) {
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
 						goto done;
+					printf ("load() 안에서 [%s(%d)] load 성공\n", file_name, i);
 				}
 				else
 					goto done;
@@ -614,8 +643,11 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Set up stack. */
 	// 스택을 초기화
+
 	if (!setup_stack (if_))
 		goto done;
+
+	printf ("load()안에서 [%s] setup_stack 성공\n", file_name);
 
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
@@ -633,11 +665,14 @@ load (const char *file_name, struct intr_frame *if_) {
 	// hex_dump(if_->rsp, if_->rsp, USER_STACK - if_->rsp, true);
 	success = true;
 
+	printf ("load()안에서 [%s] argument_stack 성공\n", file_name);
+
 done:
 	/* We arrive here whether the load is successful or not. */
 	// file_close (file);
 
 	// sema_up();
+	printf ("load() done !!! \n", file_name);
 	return success;
 }
 

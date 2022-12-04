@@ -82,7 +82,7 @@ main (void) {
 
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
-	thread_init ();
+	thread_init ();	// main 스레드 설정
 	console_init ();
 
 	/* Initialize memory system. */
@@ -105,7 +105,7 @@ main (void) {
 	syscall_init ();
 #endif
 	/* Start thread scheduler and enable interrupts. */
-	thread_start ();
+	thread_start ();	// idle 스레드 생성
 	serial_init_queue ();
 	timer_calibrate ();
 
@@ -123,7 +123,6 @@ main (void) {
 
 	/* Run actions specified on kernel command line. */
 	run_actions (argv);
-
 	/* Finish up. */
 	if (power_off_when_done)
 		power_off ();
@@ -248,6 +247,8 @@ run_task (char **argv) {
 		run_test (task);
 	} else {	// 
 		process_wait (process_create_initd (task));
+		printf("다 기다렸다 !! 부모 마지막 종료\n");
+	
 	}
 #else
 	run_test (task);
@@ -266,6 +267,7 @@ run_actions (char **argv) {
 		void (*function) (char **argv);   /* Function to execute action. */ // ????????????????????
 	};
 
+	
 	/* Table of supported actions. */
 	static const struct action actions[] = {
 		{"run", 2, run_task},
@@ -282,23 +284,27 @@ run_actions (char **argv) {
 	while (*argv != NULL) {
 		const struct action *a;
 		int i;
-
+		
 		/* Find action name. */
-		for (a = actions; ; a++)
+		for (a = actions; ; a++) {
 			if (a->name == NULL)
 				PANIC ("unknown action `%s' (use -h for help)", *argv);
 			else if (!strcmp (*argv, a->name))
 				break;
-
+		}
 		/* Check for required arguments. */
-		for (i = 1; i < a->argc; i++)
+		for (i = 1; i < a->argc; i++) {
 			if (argv[i] == NULL)
 				PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
+		}
 
 		/* Invoke action and advance. */
 		a->function (argv);
 		argv += a->argc;
 	}
+
+	// printf("아직 main 살아있니 ,,,? 현재 스레드 이름 : %s\n", thread_name());
+
 
 }
 
@@ -347,6 +353,8 @@ power_off (void) {
 
 	print_stats ();
 
+	
+	
 	printf ("Powering off...\n");
 	outw (0x604, 0x2000);               /* Poweroff command for qemu */
 	for (;;);

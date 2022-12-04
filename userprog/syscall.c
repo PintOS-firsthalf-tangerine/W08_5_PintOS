@@ -148,6 +148,11 @@ void exit(int status) {
 
 pid_t fork (const char *thread_name, struct intr_frame *if_) {
 	
+	
+
+	printf("===>thread_name: %s\n", thread_name);
+	printf("===>thread_name: %s\n", thread_current()->name);
+	printf("===>thread_name: %d\n", thread_current()->tid);
 	// 시스템콜이 받은 인자 if_ -> 즉, 커널 스택에 있는 if_를 받아온다
 	/*
 		- if

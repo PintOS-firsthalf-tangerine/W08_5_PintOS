@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <syscall.h>
 #include "tests/lib.h"
+#include "include/threads/thread.h"
 
 const char *test_name = "child-rox";
 
@@ -32,6 +33,7 @@ int
 main (int argc UNUSED, char *argv[]) 
 {
   msg ("begin");
+  //printf("===>스레드 이름 : %s, 스레드 tid : %d\n", thread_current()->name, thread_current()->tid);
   try_write ();
 
   if (!isdigit (*argv[1]))

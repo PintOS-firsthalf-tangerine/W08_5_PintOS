@@ -20,9 +20,12 @@ test_main (void)
   CHECK (write (handle, buffer, sizeof buffer) == (int) sizeof buffer,
          "write \"child-rox\"");
 
+  printf("===>exec 하기 전\n");
   /* Execute child-rox and wait for it. */
   msg ("exec \"%s\"", child_cmd);
   if (!(child = fork ("child-rox"))){
+    // child == 0 이어야 실행됨
+    printf("===>fork 끝, exec 시작\n");
     exec (child_cmd);
   }
 

@@ -326,10 +326,13 @@ thread_create (const char *name, int priority,
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);	// 새로 만든 스레드(자식 스레드)
+	
 	tid = t->tid = allocate_tid ();
 
 	// 자식스레드의 parent멤버에 부모스레드 저장
 	t->parent = thread_current();
+	printf("현재 실행 중인 부모가 될 스레드 name : %s \n", t->parent->name);
+	printf("만들어진 자식 스레드 name : %s \n", t->name);
 
 	/* 프로그램이 로드되지 않음 */
 	t->is_load = false;	///???? sungtae
@@ -757,6 +760,8 @@ kernel_thread (thread_func *function, void *aux) {
 
 	intr_enable ();       /* The scheduler runs with interrupts off. */	// do_fork에서 커널을 호출할 것으로 추정된다?????
 	function (aux);       /* Execute the thread function. */
+	printf("커널 스레드 함수 안인데 ... 언제 실행될까?\n");
+	printf("커널 스레드 함수 안인데 ... 무슨 함수가 실행될까? ... %s\n", function);
 	thread_exit ();       /* If function() returns, kill the thread. */
 }
 
