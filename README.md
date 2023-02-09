@@ -9,7 +9,7 @@ Project 1. Threads
 
 Project 2. User Program
   - Argument Passing (from user input)
-  - User Memory  
+  - User Memory Handling
   - 시스템 콜 함수 구현
   - Deny Writes to executables
 
